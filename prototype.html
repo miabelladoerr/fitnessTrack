@@ -1,0 +1,1274 @@
+<title>Iron Notebook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Karla:wght@500;700&display=swap">
+<style>
+/* ponytail: single paper theme on purpose — a notebook is one visual world. */
+:root{
+  color-scheme: light;
+  --desk:#2b3531;
+  --paper:#fdfcf7; --rule:#c6dbeb; --margin:#e7aaa6;
+  --ink:#233f8c; --pencil:#676a6c; --faint:#b3b5b3;
+  --red:#b83a2e; --ok:#2f7a4b; --warn:#a86f12;
+  --hl:rgba(255,232,90,.6); --focus:rgba(255,232,90,.35);
+  --t1:#ecd18a; --t2:#b3cfe6; --t3:#bcd9b3; --t4:#efc0b8; --t5:#d7cbe9; --t6:#e6d6bd;
+  --line:32px; --rule-y:24px; --mx:88px;
+  --hand:'Cormorant Garamond','Iowan Old Style','Palatino Linotype',Georgia,serif; /* body text */
+  --pen:'Courier Prime','Courier New',monospace; /* the coach's typed notes */
+  --print:'Karla','Segoe UI',system-ui,sans-serif;
+  --serif:'Cormorant Garamond','Iowan Old Style','Palatino Linotype',Georgia,serif;
+  --head:#1b2848;
+  --entry:'Cormorant Garamond','Iowan Old Style','Palatino Linotype',Georgia,serif; /* your answers, units, options */
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--desk);color:var(--ink);font:500 20px/var(--line) var(--hand);padding-block:24px 48px;padding-inline:16px}
+/* desk: notebook plus the sticker sheet beside it */
+.desk{display:grid;grid-template-columns:minmax(0,1080px) 176px;gap:28px;justify-content:center;align-items:start}
+.notebook{min-width:0}
+.tray{
+  position:sticky;top:calc(16px + env(safe-area-inset-top, 0px));margin-top:62px;
+  display:grid;gap:12px;padding:14px 12px 16px;border-radius:10px;
+  background:#efe9dc;color:#4a4740;font:500 13px/1.4 var(--print);
+  box-shadow:0 14px 30px -14px rgba(0,0,0,.65);
+}
+.tray-title{font:700 12px/1 var(--print);letter-spacing:.12em;text-transform:uppercase;color:#3a3935;margin:0}
+.tray-hint{margin:0}
+.sheet{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:8px;border-radius:8px;background:#fbf8f1;box-shadow:inset 0 0 0 1px #e2dac8}
+.sheet-item{aspect-ratio:1;border:0;background:none;padding:4px;border-radius:8px;cursor:grab;touch-action:none}
+.sheet-item:hover{background:#efe9dc}
+.sheet-item svg{width:100%;height:100%;display:block;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.28));pointer-events:none}
+.tray-check{display:flex;align-items:center;gap:8px;cursor:pointer}
+.tray input[type="checkbox"]{margin:0}
+.tray-btn{justify-self:start;font:700 12px/1 var(--print);color:#4a4740;background:none;border:1px solid #bdb5a3;border-radius:6px;padding:7px 10px;cursor:pointer}
+.tray-btn:hover{background:#e4dccb}
+.tray-open,.tray-close{display:none}
+
+/* stickers sit between the paper and the writing */
+.sticker-layer{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.stk{position:absolute;width:72px;height:72px;transform:translate(-50%,-50%) rotate(var(--r,0deg));filter:drop-shadow(0 2px 3px rgba(0,0,0,.25))}
+.stk svg{width:100%;height:100%;display:block}
+.stk.ghost{position:fixed;z-index:60;pointer-events:none;transform:translate(-50%,-50%) rotate(-6deg) scale(1.1)}
+.stk-x{display:none}
+.page.arranging .sticker-layer{z-index:3;pointer-events:auto}
+.page.arranging > section{opacity:.45}
+.page.arranging .stk{cursor:grab;touch-action:none;outline:1.5px dashed rgba(35,63,140,.5);outline-offset:2px;border-radius:50%}
+.page.arranging .stk.lifted{cursor:grabbing}
+.page.arranging .stk-x{display:grid;place-items:center;position:absolute;top:-4px;right:-4px;width:24px;height:24px;border:0;border-radius:50%;background:var(--red);color:#fff;font:700 15px/1 var(--print);cursor:pointer;transform:rotate(calc(var(--r,0deg) * -1))}
+
+@media (max-width:1000px){
+  .desk{grid-template-columns:minmax(0,1fr)}
+  .tray{position:fixed;top:0;right:0;bottom:0;z-index:50;width:min(240px,80vw);margin:0;border-radius:10px 0 0 10px;align-content:start;overflow-y:auto;
+    padding-top:calc(14px + env(safe-area-inset-top, 0px));transform:translateX(105%);transition:transform .2s}
+  .tray.open{transform:none}
+  .tray-open{display:block;position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom, 0px));z-index:45;
+    font:700 14px/1 var(--print);color:#3a3935;background:#efe9dc;border:0;border-radius:20px;padding:12px 18px;cursor:pointer;box-shadow:0 8px 20px -8px rgba(0,0,0,.6)}
+  .tray-close{display:block;justify-self:end;margin-top:-4px}
+}
+@media (prefers-reduced-motion:reduce){.tray{transition:none}}
+p,ul,ol,h1,h2,h3{margin:0}
+ul,ol{padding:0;list-style:none}
+
+/* divider tabs */
+.tabs{display:flex;gap:3px;padding-left:calc(var(--mx) - 16px);overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  font:700 17px/1 var(--print);letter-spacing:.02em;color:#3a3935;background:var(--c);
+  border:0;border-radius:10px 10px 0 0;padding:15px 26px 14px;white-space:nowrap;cursor:pointer;
+  transform:translateY(8px);opacity:.78;transition:transform .15s,opacity .15s;
+}
+.tab:hover{transform:translateY(2px);opacity:1}
+.tab[aria-selected="true"]{transform:none;opacity:1}
+
+/* the page: every block is a whole number of 32px lines, so text stays on the rules */
+.page{
+  --tab:var(--t1);
+  position:relative;min-height:80vh;
+  background-color:var(--paper);
+  background-image:repeating-linear-gradient(to bottom, transparent 0 31px, var(--rule) 31px 32px);
+  background-position:0 calc(var(--rule-y) - 31px);
+  border-top:10px solid var(--tab);border-radius:2px 4px 4px 2px;
+  box-shadow:0 2px 0 #ebe6d8,0 4px 0 #f7f4ea,0 20px 40px -16px rgba(0,0,0,.55);
+  padding:32px 40px 64px calc(var(--mx) + 28px);
+}
+.page::after{content:"";position:absolute;top:0;bottom:0;left:var(--mx);width:1.5px;background:var(--margin);pointer-events:none}
+.page::before{ /* punched holes */
+  content:"";position:absolute;top:0;bottom:0;left:22px;width:16px;pointer-events:none;
+  background:radial-gradient(circle at 8px 48px, var(--desk) 0 6px, transparent 6.5px) 0 0/16px 128px repeat-y;
+}
+
+/* type roles — JS nudges each role's baseline onto the rule */
+h1,h2,h3{color:var(--head);font-family:var(--serif);letter-spacing:.005em}
+h1{font:italic 600 50px/64px var(--serif)}
+h2{font:600 29px/var(--line) var(--serif)}
+h3{font:600 23px/var(--line) var(--serif)}
+.note h3,h3.note{color:var(--red)}
+h3.note{font:600 23px/var(--line) var(--serif)}
+.label,th{font:700 11px/var(--line) var(--print);letter-spacing:.1em;text-transform:uppercase;color:var(--pencil);text-align:left}
+.tag{font:700 11px/1 var(--print);letter-spacing:.1em;text-transform:uppercase;color:var(--pencil);margin-right:6px}
+.small{font:500 17px/var(--line) var(--hand);color:var(--pencil)}
+.big{font:600 30px/var(--line) var(--serif);color:var(--head)}
+.muted{color:var(--pencil)}
+.prio{color:var(--red)}
+h2 .muted{font:italic 500 18px/1 var(--serif)}
+.note{color:var(--red);font:400 16px/var(--line) var(--pen)}
+.hl{background:linear-gradient(transparent 30%, var(--hl) 30% 90%, transparent 90%)}
+
+/* layout */
+section[role="tabpanel"]{display:grid;gap:var(--line);position:relative;z-index:2}
+.stack{display:grid;gap:var(--line)}
+.split{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:0 40px;align-items:start}
+.split > aside{padding-top:var(--line)}
+.cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:0 32px}
+.row{display:flex;flex-wrap:wrap;gap:0 40px}
+.actions{display:flex;align-items:center;gap:16px;height:var(--line)}
+
+/* writing on the page: no boxes — the paper's rule is the line you write on */
+input,select,button{font:inherit;color:inherit}
+.hand-in{
+  font:italic 600 20px/var(--line) var(--entry);font-variant-numeric:lining-nums;color:var(--ink);background:transparent;border:0;border-radius:3px;
+  height:var(--line);padding:0 4px;width:6ch;text-align:center;
+}
+.hand-in::placeholder{color:var(--faint);font-weight:300}
+.hand-in:focus{outline:none;background:var(--focus)}
+.hand-in::-webkit-inner-spin-button,.hand-in::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.hand-in[type="number"]{-moz-appearance:textfield}
+.hand-in.wide{width:100%;text-align:left}
+#f-ft,#f-in{width:4ch}
+select.hand-in{
+  width:100%;text-align:left;appearance:none;padding-right:20px;cursor:pointer;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23676a6c' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 4px center;
+}
+.field{display:grid;grid-template-columns:11ch minmax(0,1fr);gap:8px;min-height:var(--line);align-items:start}
+.field .pair{display:flex;gap:4px;align-items:start}
+.field .pair span,.target .unit{color:var(--pencil)}
+/* your answers are set in the entry face; JS supplies --n-entry so they sit on the rule */
+.entry,.chk,td,.field .pair > span,.day li .muted,.target > span{font:italic 600 20px/var(--line) var(--entry);font-variant-numeric:lining-nums tabular-nums}
+.field .pair > span,.target .unit{font-weight:500}
+.chk,td,.field .pair > span,.day li .muted,.target > span,.hand-in{position:relative;top:var(--n-entry,0px)}
+td .hand-in{top:0}
+.target{display:grid;grid-template-columns:14ch 7ch 5ch 3ch 16px;gap:8px;height:var(--line);align-items:start;justify-content:start}
+.target > .muted{text-align:right}
+.chk{display:flex;gap:10px;align-items:flex-start;min-height:var(--line);cursor:pointer}
+.gear .cols{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+.bare{border:0;padding:0;margin:0;min-width:0}
+.bare legend{padding:0}
+input[type="checkbox"],input[type="radio"]{accent-color:var(--ink);width:16px;height:16px;margin:calc(var(--rule-y) - 17px - var(--n-entry,0px)) 0 0;flex:none}
+td input[type="checkbox"]{margin:0;vertical-align:middle}
+.link{background:none;border:0;padding:0;cursor:pointer;color:var(--ink);font:600 20px/var(--line) var(--hand);text-decoration:underline;text-decoration-color:var(--faint);text-underline-offset:4px}
+.note .link{font:inherit;color:var(--red);text-decoration-color:currentColor}
+.link:hover{text-decoration-color:currentColor}
+.btn{font:700 14px/1 var(--print);letter-spacing:.02em;color:var(--paper);background:var(--ink);border:0;border-radius:4px;height:26px;padding:0 14px;cursor:pointer}
+.btn:hover{background:#18306f}
+:focus-visible{outline:2px dashed var(--red);outline-offset:2px}
+
+/* tables sit on the rules too */
+table{border-collapse:collapse}
+th,td{height:var(--line);padding:0 12px 0 0;white-space:nowrap}
+td{color:var(--ink)}
+.bar-row.wide{grid-template-columns:14ch minmax(0,1fr) 24ch}
+.num{text-align:right}
+th.num{text-align:right}
+.scroll{overflow-x:auto}
+
+/* workout */
+.ex .sets th{text-align:center}
+.ex .sets td:first-child{color:var(--pencil);font-weight:500;width:3ch}
+
+/* bars (volume check, nutrition) */
+.bars{display:grid}
+.bar-row{display:grid;grid-template-columns:10ch minmax(0,1fr) 12ch;gap:12px;min-height:var(--line);align-items:start}
+.track{position:relative;height:8px;margin-top:calc(var(--rule-y) - 12px);background:rgba(35,63,140,.08);border-radius:4px}
+.track .fill{position:absolute;inset:0 auto 0 0;background:var(--ink);border-radius:4px}
+.track .zone{position:absolute;top:-4px;bottom:-4px;left:40%;width:40%;border-left:1.5px solid var(--ok);border-right:1.5px solid var(--ok)}
+.st-low{color:var(--red)} .st-ok{color:var(--ok)} .st-high{color:var(--warn)}
+
+/* routine */
+.days{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--line) 40px}
+.day li{display:grid;grid-template-columns:minmax(0,1fr) 3ch auto 16px;gap:4px;height:var(--line);align-items:start}
+.day li .hand-in[type="number"]{width:3ch}
+.x{background:none;border:0;padding:0;cursor:pointer;color:var(--faint);font:500 20px/var(--line) var(--hand)}
+.x:hover{color:var(--red)}
+.notes li + li{margin-top:var(--line)}
+
+/* progress */
+.chart svg{width:100%;height:auto;display:block}
+.chart .tick{font:500 12px var(--print);fill:var(--pencil)}
+.chart .end{font:italic 600 19px var(--serif)}
+.charts{display:grid;grid-template-columns:3fr 2fr;gap:var(--line) 40px}
+
+/* library: cards drawn with an outline so they don't shift the rules */
+.filters{display:flex;flex-wrap:wrap;gap:0 24px;align-items:start}
+.filters .hand-in{width:16ch;text-align:left}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--line) 24px}
+.card{padding:0 14px;border-radius:4px;box-shadow:0 0 0 1px var(--faint)}
+.card li::before{content:"– ";color:var(--pencil)}
+
+@media (max-width:860px){
+  .split,.charts{grid-template-columns:minmax(0,1fr)}
+  .split > aside{padding-top:0}
+}
+@media (max-width:600px){
+  :root{--mx:20px}
+  .page{padding:32px 16px 64px calc(var(--mx) + 14px)}
+  .page::before{display:none}
+  .tabs{padding-left:0}
+  .field{grid-template-columns:9ch minmax(0,1fr)}
+  .bar-row.wide{grid-template-columns:minmax(0,1fr) auto}
+  .bar-row.wide .track{grid-column:1 / -1;grid-row:2;margin-top:calc(var(--rule-y) - 12px)}
+  .target{grid-template-columns:minmax(0,1fr) auto 5ch auto 16px;gap:4px}
+}
+@media (prefers-reduced-motion:reduce){.tab{transition:none}}
+</style>
+<style id="align"></style>
+
+<div class="desk">
+<div class="notebook">
+  <nav class="tabs" role="tablist" aria-label="Notebook sections">
+    <button class="tab" role="tab" id="t-me" aria-controls="p-me" data-tab="me" data-c="t1" style="--c:var(--t1)">About Me</button>
+    <button class="tab" role="tab" id="t-log" aria-controls="p-log" data-tab="log" data-c="t2" style="--c:var(--t2)">Workout</button>
+    <button class="tab" role="tab" id="t-routine" aria-controls="p-routine" data-tab="routine" data-c="t3" style="--c:var(--t3)">Routine</button>
+    <button class="tab" role="tab" id="t-food" aria-controls="p-food" data-tab="food" data-c="t4" style="--c:var(--t4)">Nutrition</button>
+    <button class="tab" role="tab" id="t-progress" aria-controls="p-progress" data-tab="progress" data-c="t5" style="--c:var(--t5)">Progress</button>
+    <button class="tab" role="tab" id="t-library" aria-controls="p-library" data-tab="library" data-c="t6" style="--c:var(--t6)">Library</button>
+  </nav>
+
+  <main class="page" id="page">
+    <div class="sticker-layer" id="stickers"></div>
+
+    <!-- ABOUT ME -->
+    <section id="p-me" role="tabpanel" aria-labelledby="t-me">
+      <div>
+        <h1>About me</h1>
+        <p class="small">Filled in with a sample entry. Everything else in the notebook is built from this page.</p>
+      </div>
+      <form id="me" class="stack" novalidate>
+        <div class="split">
+          <div>
+            <h2>The basics</h2>
+            <div class="cols">
+              <label class="field"><span class="label">Name</span><input class="hand-in wide" id="f-name" value="Jordan" autocomplete="given-name"></label>
+              <label class="field"><span class="label">Age</span><input class="hand-in" id="f-age" type="number" inputmode="numeric" value="31"></label>
+              <label class="field"><span class="label">Weight</span><span class="pair"><input class="hand-in" id="f-lb" type="number" inputmode="decimal" step="0.1" value="178.8"><span>lb</span></span></label>
+              <div class="field"><span class="label" id="h-lbl">Height</span><span class="pair" role="group" aria-labelledby="h-lbl"><input class="hand-in" id="f-ft" type="number" inputmode="numeric" value="5" aria-label="Feet"><span>ft</span><input class="hand-in" id="f-in" type="number" inputmode="decimal" value="10" aria-label="Inches"><span>in</span></span></div>
+              <label class="field"><span class="label">Calories for</span><select class="hand-in" id="f-sex"><option value="m" selected>male body</option><option value="f">female body</option></select></label>
+            </div>
+          </div>
+          <aside><ul class="note notes" id="n-basics"></ul></aside>
+        </div>
+        <div class="split">
+          <div>
+            <h2>Measurements <span class="muted">optional, but they show what the scale can't</span></h2>
+            <div class="cols">
+              <label class="field"><span class="label">Waist</span><span class="pair"><input class="hand-in" id="f-waist" type="number" step="0.25" value="33.5" placeholder="—"><span>in</span></span></label>
+              <label class="field"><span class="label">Hips</span><span class="pair"><input class="hand-in" id="f-hips" type="number" step="0.25" value="39" placeholder="—"><span>in</span></span></label>
+              <label class="field"><span class="label">Chest</span><span class="pair"><input class="hand-in" id="f-chest" type="number" step="0.25" value="41.5" placeholder="—"><span>in</span></span></label>
+              <label class="field"><span class="label">Upper arm</span><span class="pair"><input class="hand-in" id="f-arm" type="number" step="0.25" value="15.5" placeholder="—"><span>in</span></span></label>
+              <label class="field"><span class="label">Thigh</span><span class="pair"><input class="hand-in" id="f-thigh" type="number" step="0.25" value="" placeholder="—"><span>in</span></span></label>
+              <label class="field"><span class="label">Body fat</span><span class="pair"><input class="hand-in" id="f-bf" type="number" step="0.1" value="17.9" placeholder="—"><span>%</span></span></label>
+            </div>
+          </div>
+          <aside><ul class="note notes" id="n-meas"></ul></aside>
+        </div>
+        <div class="split">
+          <fieldset class="bare">
+            <legend><h2>My goals <span class="muted">check all that fit</span></h2></legend>
+            <div class="cols">
+              <label class="chk"><input type="checkbox" id="g-glutes" checked> Grow glutes</label>
+              <label class="chk"><input type="checkbox" id="g-tone" checked> Tone up</label>
+              <label class="chk"><input type="checkbox" id="g-bulk"> Bulk up</label>
+              <label class="chk"><input type="checkbox" id="g-strong"> Get stronger</label>
+              <label class="chk"><input type="checkbox" id="g-lose"> Lose fat</label>
+              <label class="chk"><input type="checkbox" id="g-stamina"> Improve stamina</label>
+            </div>
+          </fieldset>
+          <aside><ul class="note notes" id="n-goals"></ul></aside>
+        </div>
+        <div class="split">
+          <div>
+            <h2>Targets <span class="muted">numbers to aim for</span></h2>
+            <p class="label">Measurements</p>
+            <ol id="targets-m"></ol>
+            <p><button class="link" type="button" id="add-m">+ add a measurement target</button></p>
+            <p class="label">Lifts · estimated 1-rep max</p>
+            <ol id="targets-l"></ol>
+            <p><button class="link" type="button" id="add-l">+ add a lift target</button></p>
+          </div>
+          <aside><ul class="note notes" id="n-targets"></ul></aside>
+        </div>
+        <div class="split">
+          <div>
+            <h2>How I train</h2>
+            <div class="cols">
+              <label class="field"><span class="label">Days / week</span><select class="hand-in" id="f-days"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label>
+              <label class="field"><span class="label">Minutes</span><select class="hand-in" id="f-mins"><option>45</option><option selected>60</option><option>75</option><option>90</option></select></label>
+              <label class="field"><span class="label">Experience</span><select class="hand-in" id="f-level"><option value="beg">beginner</option><option value="int" selected>intermediate</option><option value="adv">advanced</option></select></label>
+            </div>
+            <p class="label" id="loc-lbl">Where I train</p>
+            <div class="cols" role="radiogroup" aria-labelledby="loc-lbl">
+              <label class="chk"><input type="radio" name="loc" value="home" id="loc-home"> At home</label>
+              <label class="chk"><input type="radio" name="loc" value="gym" id="loc-gym" checked> At a gym</label>
+            </div>
+            <div id="gear-home" class="gear" hidden></div>
+            <div id="gear-gym" class="gear"></div>
+            <p class="label">Go easy on my</p>
+            <div class="cols">
+              <label class="chk"><input type="checkbox" id="c-back"> Lower back</label>
+              <label class="chk"><input type="checkbox" id="c-shoulder"> Shoulders</label>
+              <label class="chk"><input type="checkbox" id="c-knee"> Knees</label>
+            </div>
+          </div>
+          <aside><ul class="note notes" id="n-train"></ul></aside>
+        </div>
+        <div class="actions"><button class="btn" type="submit">Save my page</button><span class="small" id="me-msg" role="status"></span></div>
+      </form>
+    </section>
+
+    <!-- WORKOUT -->
+    <section id="p-log" role="tabpanel" aria-labelledby="t-log" hidden>
+      <div>
+        <h1>Upper A</h1>
+        <p class="small">Wednesday, Sept 23 · week 6 of 8 · <span id="summary"></span></p>
+      </div>
+      <div class="stack" id="exercises"></div>
+    </section>
+
+    <!-- ROUTINE -->
+    <section id="p-routine" role="tabpanel" aria-labelledby="t-routine" hidden>
+      <div>
+        <h1>My routine</h1>
+        <p class="small" id="r-basis"></p>
+      </div>
+      <div class="split">
+        <div class="stack">
+          <div class="days" id="days"></div>
+          <div>
+            <h2>Weekly sets per muscle</h2>
+            <p class="small">The green marks show 10–20 sets a week, where most people grow best. ★ marks a priority from your targets.</p>
+            <div class="bars" id="tally"></div>
+          </div>
+          <p class="small">Rules in this prototype: rep ranges by goal, 10–20 weekly sets per muscle (Schoenfeld et al., 2017), and exercise picks filtered by your equipment and joints.</p>
+        </div>
+        <aside>
+          <h3 class="note">Coach's notes</h3>
+          <ul class="note notes" id="r-notes"></ul>
+        </aside>
+      </div>
+    </section>
+
+    <!-- NUTRITION -->
+    <section id="p-food" role="tabpanel" aria-labelledby="t-food" hidden>
+      <div>
+        <h1>Nutrition</h1>
+        <p class="small" id="n-basis"></p>
+      </div>
+      <div class="split">
+        <div class="stack">
+          <div>
+            <h2>Today so far</h2>
+            <div class="bars" id="macros"></div>
+          </div>
+          <form id="food-form" class="scroll">
+            <table>
+              <thead><tr><th>Meal</th><th>Food</th><th class="num">kcal</th><th class="num">Protein</th><th class="num">Carbs</th><th class="num">Fat</th></tr></thead>
+              <tbody id="food-rows"></tbody>
+              <tfoot><tr>
+                <td><select class="hand-in" id="n-meal" aria-label="Meal" style="width:10ch"><option>Breakfast</option><option>Lunch</option><option selected>Dinner</option><option>Snack</option></select></td>
+                <td><input class="hand-in wide" id="n-food" placeholder="add a food…" aria-label="Food" style="min-width:16ch"></td>
+                <td class="num"><input class="hand-in" id="n-kcal" type="number" placeholder="0" aria-label="Calories"></td>
+                <td class="num"><input class="hand-in" id="n-p" type="number" placeholder="0" aria-label="Protein grams"></td>
+                <td class="num"><input class="hand-in" id="n-c" type="number" placeholder="0" aria-label="Carbs grams"></td>
+                <td class="num"><input class="hand-in" id="n-f" type="number" placeholder="0" aria-label="Fat grams"></td>
+              </tr></tfoot>
+            </table>
+            <div class="actions"><button class="btn" type="submit">Add food</button><span class="small" id="n-msg" role="status"></span></div>
+          </form>
+        </div>
+        <aside><ul class="note notes" id="n-notes"></ul></aside>
+      </div>
+    </section>
+
+    <!-- PROGRESS -->
+    <section id="p-progress" role="tabpanel" aria-labelledby="t-progress" hidden>
+      <div>
+        <h1>Progress</h1>
+        <p class="small">Block 3 · weeks 1–8 · sample history</p>
+      </div>
+      <div class="row">
+        <div><p class="label">Sessions</p><p class="big">22 / 24</p></div>
+        <div><p class="label">PRs this block</p><p class="big">5</p></div>
+        <div><p class="label">Bench est. 1RM</p><p class="big">+19 lb</p></div>
+        <div><p class="label">Waist</p><p class="big">−1 in</p></div>
+      </div>
+      <div class="charts">
+        <div>
+          <h2>Estimated 1-rep max</h2>
+          <p class="small">Best set each week, weight × (1 + reps ÷ 30)</p>
+          <div class="chart snap" id="c-1rm"></div>
+        </div>
+        <div>
+          <h2>Weekly volume</h2>
+          <p class="small">Thousands of lb moved</p>
+          <div class="chart snap" id="c-vol"></div>
+        </div>
+      </div>
+      <div>
+        <h2>Personal records</h2>
+        <ul>
+          <li><span class="hl">Sep 23</span> Bench press 185 × 10</li>
+          <li>Sep 19 · Deadlift 315 × 6</li>
+          <li>Sep 17 · Squat 265 × 6</li>
+          <li>Sep 10 · Pull-up +25 lb × 8</li>
+        </ul>
+      </div>
+      <div>
+        <h2>Targets</h2>
+        <p class="small">Measurements from your first entry, lifts from week 1. Set these on About Me.</p>
+        <div class="bars" id="t-bars"></div>
+      </div>
+      <div class="split">
+        <div>
+          <h2>Body</h2>
+          <p class="small">Every two weeks, morning, before food. Saving your About Me page adds today's row.</p>
+          <div class="chart snap" id="c-bw"></div>
+          <div class="scroll">
+            <table>
+              <thead><tr><th>Date</th><th class="num">Weight</th><th class="num">Waist</th><th class="num">Hips</th><th class="num">Chest</th><th class="num">Arm</th><th class="num">Thigh</th><th class="num">Body fat</th></tr></thead>
+              <tbody id="meas-rows"></tbody>
+            </table>
+          </div>
+        </div>
+        <aside><p class="note" style="padding-top:64px">Waist down, weight down about ½ lb a week while lifts climb. That's the recomp you're after.</p></aside>
+      </div>
+    </section>
+
+    <!-- LIBRARY -->
+    <section id="p-library" role="tabpanel" aria-labelledby="t-library" hidden>
+      <div>
+        <h1>Exercise library</h1>
+        <p class="small">Sample cards. In the real app these come from an exercise database plus a kinesiology source.</p>
+      </div>
+      <div class="filters">
+        <label class="label" for="lib-q">Find</label><input class="hand-in" id="lib-q" type="search" placeholder="e.g. row">
+        <label class="label" for="lib-m">Muscle</label><select class="hand-in" id="lib-m" style="width:14ch"><option value="">any</option></select>
+        <label class="chk"><input type="checkbox" id="lib-mine"> Only gear I have</label>
+      </div>
+      <div class="cards" id="cards"></div>
+    </section>
+  </main>
+</div>
+<aside class="tray" id="tray" aria-label="Stickers">
+  <button class="tray-btn tray-close" id="tray-close" type="button">Close</button>
+  <p class="tray-title">Stickers</p>
+  <p class="tray-hint">Drag one onto the page, or tap to add it. Stickers sit behind your writing.</p>
+  <div class="sheet" id="sheet"></div>
+  <label class="tray-check"><input type="checkbox" id="arrange"> Move or remove</label>
+  <button class="tray-btn" id="clear-stickers" type="button">Clear this page</button>
+</aside>
+</div>
+<button class="tray-open" id="tray-open" type="button" aria-expanded="false" aria-controls="tray">Stickers</button>
+
+<script>
+// ponytail: all data lives in memory; nothing is saved between visits (prototype).
+const $ = s => document.querySelector(s);
+const cap = s => s[0].toUpperCase() + s.slice(1);
+const e1rm = (w, r) => Math.round(w * (1 + r / 30));
+const TODAY = '2026-09-23';
+
+// ---------- exercise knowledge (stand-in for the future API) ----------
+// Gear: home kit, and gym kit tiered by how rare it is (rarer gear gets picked first so routines get creative).
+const GEAR = {
+  home: {'What I have at home': [
+    ['mat','Exercise mat'], ['ankle','Ankle weights'], ['lightdb','Small weights (2–15 lb)'], ['db','Adjustable dumbbells'],
+    ['kb','Kettlebell'], ['miniband','Mini loop bands'], ['tube','Bands with handles'], ['pullbar','Doorway pull-up bar'],
+    ['bench','Sturdy chair or bench'], ['ball','Stability ball'], ['sliders','Sliders or a towel'], ['step','Step or stairs'],
+    ['rope','Jump rope'], ['backpack','Backpack I can load up'],
+  ]},
+  gym: {
+    'Most gyms have': [['barbell','Barbell and rack'], ['db','Dumbbells'], ['cable','Cable station'], ['legpress','Leg press'], ['legcurl','Leg curl machine'], ['smith','Smith machine'], ['pullbar','Pull-up bar'], ['kb','Kettlebells']],
+    'Often found': [['landmine','Landmine'], ['trapbar','Trap bar'], ['hipthrust','Hip thrust machine'], ['hack','Hack squat'], ['backext','45° back extension'], ['abductor','Hip abduction machine'], ['trx','Suspension trainer (TRX)'], ['rower','Rowing machine'], ['bike','Air bike'], ['ropes','Battle ropes'], ['ball','Stability ball'], ['miniband','Mini loop bands']],
+    'Specialty · the fun stuff': [['ghd','Glute-ham developer (GHD)'], ['reversehyper','Reverse hyper'], ['beltsquat','Belt squat'], ['pendulum','Pendulum squat'], ['ssb','Safety squat bar'], ['sled','Push sled'], ['nordic','Nordic curl bench']],
+  },
+};
+const GEAR_ON = {
+  home:['mat','lightdb','miniband','bench'],
+  gym:['barbell','db','cable','legpress','legcurl','smith','pullbar','kb','landmine','trapbar','hipthrust','backext','abductor','rower','sled','ghd'],
+};
+const RARE = {}, GEAR_NAME = {bodyweight:'just you', bench:'a bench', mat:'a mat'};
+Object.values(GEAR.gym).forEach((list, tier) => list.forEach(([k]) => RARE[k] = tier));
+Object.values(GEAR).forEach(g => Object.values(g).flat().forEach(([k, n]) => GEAR_NAME[k] = n.toLowerCase()));
+
+const MUSCLES = ['chest','back','shoulders','biceps','triceps','quads','hamstrings','glutes','calves','core'];
+const JOINT = {back:'lower back', shoulder:'shoulders', knee:'knees'};
+// name, pattern, primary, secondary, gear (any one of), go-easy-on, cues
+const EX = [
+  ['Barbell Back Squat','squat',['quads','glutes'],['core'],['barbell'],['back','knee'],['Brace, then sit between your hips','Knees track over toes']],
+  ['Safety Bar Squat','squat',['quads','glutes'],['core'],['ssb'],['knee'],['Handles let your shoulders relax','Stay tall; the bar tips you forward']],
+  ['Belt Squat','squat',['quads','glutes'],[],['beltsquat'],[],['Loads the legs with no weight on your spine','Sit straight down between your feet']],
+  ['Pendulum Squat','squat',['quads'],['glutes'],['pendulum'],[],['Let your knees travel far forward','Slow into the bottom']],
+  ['Hack Squat','squat',['quads'],['glutes'],['hack'],['knee'],['Feet low on the plate for more quads']],
+  ['Leg Press','squat',['quads','glutes'],[],['legpress'],[],['Lower back stays on the pad']],
+  ['Goblet Squat','squat',['quads','glutes'],['core'],['db','kb'],[],['Weight at your sternum','Elbows inside knees at the bottom']],
+  ['Backpack Squat','squat',['quads','glutes'],[],['backpack'],[],['Load it with books or water jugs','Hug it to your chest']],
+  ['Bodyweight Box Squat','squat',['quads','glutes'],[],['bodyweight'],[],['Touch the seat, don’t sit and relax']],
+  ['Romanian Deadlift','hinge',['hamstrings','glutes'],['back'],['barbell'],['back'],['Push hips back, soft knees','Bar stays against your legs']],
+  ['Conventional Deadlift','hinge',['glutes','hamstrings'],['back','quads'],['barbell'],['back'],['Bar over mid-foot, push the floor away','Hips and knees lock out together']],
+  ['Trap Bar Deadlift','hinge',['glutes','hamstrings','quads'],['back'],['trapbar'],[],['Stand in the middle, push the floor away','Easier on the back than a straight bar']],
+  ['Reverse Hyper','hinge',['glutes','hamstrings'],['back'],['reversehyper'],[],['Swing legs up with your glutes, not momentum','Often used to ease a cranky back']],
+  ['45° Back Extension','hinge',['glutes','hamstrings'],['back'],['backext'],[],['Round slightly and squeeze glutes to bias them']],
+  ['Dumbbell Romanian Deadlift','hinge',['hamstrings','glutes'],[],['db'],[],['Weights slide down your thighs','Stop when your hips stop moving back']],
+  ['Kettlebell Swing','hinge',['glutes','hamstrings'],['core'],['kb'],['back'],['Snap the hips, arms are just ropes','Bell floats to chest height']],
+  ['Cable Pull-Through','hinge',['glutes','hamstrings'],[],['cable'],[],['Hinge, don’t squat','Squeeze glutes to stand']],
+  ['Banded Good Morning','hinge',['hamstrings','glutes'],['back'],['tube'],[],['Band under your feet and behind your neck','Push hips back']],
+  ['Single-Leg RDL','hinge',['hamstrings','glutes'],['core'],['bodyweight'],[],['Reach back with the free leg']],
+  ['Hip Thrust Machine','glute',['glutes'],['hamstrings'],['hipthrust'],[],['Chin tucked, ribs down','Pause one second at the top']],
+  ['Hip Thrust','glute',['glutes'],['hamstrings'],['barbell'],[],['Upper back on the bench, chin tucked','Pause at the top']],
+  ['Hip Abduction Machine','glute',['glutes'],[],['abductor'],[],['Lean forward slightly to hit upper glutes']],
+  ['Cable Kickback','glute',['glutes'],[],['cable'],[],['Kick back and slightly out','No arching your lower back']],
+  ['Banded Lateral Walk','glute',['glutes'],[],['miniband'],[],['Band above the knees, stay low','Small steps, toes forward']],
+  ['Ankle-Weight Donkey Kick','glute',['glutes'],[],['ankle'],[],['On all fours, press your heel to the ceiling','Don’t arch your back']],
+  ['Ankle-Weight Fire Hydrant','glute',['glutes'],[],['ankle'],[],['Knee bent, lift out to the side','Keep hips square']],
+  ['Single-Leg Hip Thrust','glute',['glutes'],['hamstrings'],['bench'],[],['Shoulders on the chair or bench','Drive through the heel']],
+  ['Glute Bridge','glute',['glutes'],['hamstrings'],['bodyweight'],[],['Drive through your heels']],
+  ['Bulgarian Split Squat','lunge',['quads','glutes'],[],['bench'],['knee'],['Rear foot is just for balance','Lean forward slightly for more glutes']],
+  ['Walking Lunge','lunge',['quads','glutes'],[],['db','lightdb','kb'],['knee'],['Long steps for glutes, short for quads']],
+  ['Step-Up','lunge',['quads','glutes'],[],['step','bench'],[],['Whole foot on the step','Don’t push off the back leg']],
+  ['Slider Reverse Lunge','lunge',['quads','glutes'],[],['sliders'],[],['Slide the back foot out; the front leg does the work']],
+  ['Reverse Lunge','lunge',['quads','glutes'],[],['bodyweight'],[],['Step back, drop the back knee straight down']],
+  ['Glute-Ham Raise','kneeflex',['hamstrings'],['glutes'],['ghd'],['knee'],['Knees just behind the pad','Curl up in a straight line, hips to head']],
+  ['Nordic Curl','kneeflex',['hamstrings'],[],['nordic','bodyweight'],['knee'],['Lower as slowly as you can','Catch yourself with your hands']],
+  ['Seated Leg Curl','kneeflex',['hamstrings'],[],['legcurl'],[],['Lean forward slightly','Slow on the way up']],
+  ['Stability Ball Leg Curl','kneeflex',['hamstrings'],['glutes'],['ball'],[],['Hips stay up the whole time']],
+  ['Slider Leg Curl','kneeflex',['hamstrings'],['glutes'],['sliders'],[],['Bridge up, slide heels out and back']],
+  ['Leg Press Calf Raise','calves',['calves'],[],['legpress'],[],['Balls of your feet on the edge, full stretch']],
+  ['Smith Machine Calf Raise','calves',['calves'],[],['smith'],[],['Toes on a plate, pause at the bottom']],
+  ['Single-Leg Calf Raise','calves',['calves'],[],['step','bodyweight'],[],['Hold a wall, go slow']],
+  ['Barbell Bench Press','hpush',['chest'],['triceps','shoulders'],['barbell'],['shoulder'],['Shoulder blades pinned','Bar touches low chest']],
+  ['Dumbbell Bench Press','hpush',['chest'],['triceps','shoulders'],['db'],[],['Elbows about 45° from your sides']],
+  ['Smith Machine Bench Press','hpush',['chest'],['triceps','shoulders'],['smith'],[],['Set the bench so the bar lands on low chest']],
+  ['Band Chest Press','hpush',['chest'],['triceps'],['tube'],[],['Anchor behind you at chest height']],
+  ['Push-Up','hpush',['chest'],['triceps','shoulders','core'],['bodyweight'],[],['Body in one straight line']],
+  ['Incline Dumbbell Press','incline',['chest'],['shoulders','triceps'],['db'],[],['Bench at 30°, not steeper']],
+  ['Low-to-High Cable Fly','incline',['chest'],['shoulders'],['cable'],[],['Soft elbows, hug a tree']],
+  ['Feet-Elevated Push-Up','incline',['chest'],['shoulders','triceps'],['bench'],[],['Feet on the chair, hands on the floor']],
+  ['Landmine Press','vpush',['shoulders'],['chest','triceps'],['landmine'],[],['Shoulder-friendly angle','Reach at the top']],
+  ['Standing Overhead Press','vpush',['shoulders'],['triceps','core'],['barbell'],['shoulder','back'],['Squeeze glutes, no leaning back']],
+  ['Kettlebell Bottoms-Up Press','vpush',['shoulders'],['core'],['kb'],[],['Bell upside down, crush the handle','Kind to cranky shoulders']],
+  ['Seated Dumbbell Press','vpush',['shoulders'],['triceps'],['db'],['shoulder'],['Back against the pad']],
+  ['Band Overhead Press','vpush',['shoulders'],['triceps'],['tube'],[],['Stand on the band, press straight up']],
+  ['Pike Push-Up','vpush',['shoulders'],['triceps'],['bodyweight'],['shoulder'],['Hips high, head forward of your hands']],
+  ['Landmine T-Bar Row','hpull',['back'],['biceps'],['landmine'],['back'],['Chest up, pull to your stomach']],
+  ['Barbell Row','hpull',['back'],['biceps','hamstrings'],['barbell'],['back'],['Torso about 45°, stays still']],
+  ['Chest-Supported Dumbbell Row','hpull',['back'],['biceps'],['db'],[],['Chest stays on the pad','Drive elbows to hips']],
+  ['Seated Cable Row','hpull',['back'],['biceps'],['cable'],[],['Tall chest, don’t rock']],
+  ['Suspension Trainer Row','hpull',['back'],['biceps','core'],['trx'],[],['Walk your feet forward to make it harder']],
+  ['Band Row','hpull',['back'],['biceps'],['tube'],[],['Anchor at chest height, elbows to hips']],
+  ['Backpack Row','hpull',['back'],['biceps'],['backpack'],[],['One hand on a chair, row to your hip']],
+  ['Pull-Up','vpull',['back'],['biceps'],['pullbar'],[],['Start from a dead hang']],
+  ['Lat Pulldown','vpull',['back'],['biceps'],['cable'],[],['Pull elbows down to your ribs']],
+  ['Band Lat Pulldown','vpull',['back'],['biceps'],['tube'],[],['Anchor high on a door, elbows to ribs']],
+  ['Dumbbell Lateral Raise','lateral',['shoulders'],[],['db','lightdb'],[],['Lead with elbows','Stop at shoulder height']],
+  ['Cable Lateral Raise','lateral',['shoulders'],[],['cable'],[],['Cable behind you, constant tension']],
+  ['Band Lateral Raise','lateral',['shoulders'],[],['tube','miniband'],[],['Stand on the band, lift out to the sides']],
+  ['Face Pull','reardelt',['shoulders'],['back'],['cable'],[],['Pull to your eyebrows, thumbs back']],
+  ['Band Pull-Apart','reardelt',['shoulders'],['back'],['tube','miniband'],[],['Arms straight, band to your chest']],
+  ['Reverse Dumbbell Fly','reardelt',['shoulders'],['back'],['db','lightdb'],[],['Light weight, pinkies lead']],
+  ['Dumbbell Curl','biceps',['biceps'],[],['db','lightdb'],[],['Elbows stay pinned']],
+  ['Cable Curl','biceps',['biceps'],[],['cable'],[],['Step back so tension starts at the bottom']],
+  ['Band Curl','biceps',['biceps'],[],['tube'],[],['Stand on the band, slow on the way down']],
+  ['Rope Pushdown','triceps',['triceps'],[],['cable'],[],['Split the rope at the bottom']],
+  ['Overhead Dumbbell Extension','triceps',['triceps'],[],['db','lightdb'],['shoulder'],['Elbows point forward, not out']],
+  ['Bench Dip','triceps',['triceps'],['chest'],['bench'],['shoulder'],['Hands on the edge, shoulders down']],
+  ['Close-Grip Push-Up','triceps',['triceps'],['chest'],['bodyweight'],[],['Hands under shoulders, elbows tucked']],
+  ['Stability Ball Rollout','core',['core'],[],['ball'],[],['Ribs down, roll out only as far as you control']],
+  ['Pallof Press','core',['core'],[],['cable','tube'],[],['Resist the twist, press straight out']],
+  ['Slider Body Saw','core',['core'],[],['sliders'],[],['Forearm plank, rock forward and back']],
+  ['Dead Bug','core',['core'],[],['bodyweight'],[],['Low back glued to the floor']],
+  ['Sled Push','finisher',[],[],['sled'],[],['Low handles, drive with short fast steps']],
+  ['Air Bike Sprints','finisher',[],[],['bike'],[],['All-out effort, then easy pedaling']],
+  ['Rower Intervals','finisher',[],[],['rower'],[],['Legs, then hips, then arms']],
+  ['Battle Rope Waves','finisher',[],[],['ropes'],[],['Soft knees, quick small waves']],
+  ['Jump Rope Intervals','finisher',[],[],['rope'],[],['Stay on the balls of your feet']],
+  ['Burpees','finisher',[],[],['bodyweight'],[],['Step back instead of jumping if your wrists or knees complain']],
+].map(([n,p,m,s,e,avoid,cues]) => ({n,p,m,s,e,avoid,cues}));
+const BY = Object.fromEntries(EX.map(x => [x.n, x]));
+
+// ---------- line alignment ----------
+// Measure where each type role's baseline falls, move the paper rules under body text,
+// and nudge every other role onto the same rules. Works with whatever font actually loaded.
+const ROLES = [['h1','<h1>'],['h2','<h2>'],['h3','<h3>'],['.label, th','<p class="label">'],['.small','<p class="small">'],['.big','<p class="big">'],['.note > li, p.note','<p class="note">']];
+function baseline(html) {
+  const w = document.createElement('div');
+  w.style.cssText = 'position:absolute;visibility:hidden;left:0;top:0;width:600px';
+  w.innerHTML = html;
+  const el = w.firstElementChild, i = document.createElement('i');
+  el.style.position = 'static'; el.append('Hg'); i.style.cssText = 'display:inline-block;width:0;height:0'; el.append(i);
+  $('#page').append(w);
+  const b = i.getBoundingClientRect().top - el.getBoundingClientRect().top;
+  w.remove(); return b;
+}
+function align() {
+  const base = baseline('<p>');
+  document.documentElement.style.setProperty('--rule-y', Math.round(base + 1) % 32 + 'px');
+  document.documentElement.style.setProperty('--n-entry', Math.round(((base - baseline('<p class="entry">')) % 32 + 48) % 32 - 16) + 'px');
+  $('#align').textContent = ROLES.map(([sel, html]) =>
+    `${sel}{position:relative;top:${Math.round(((base - baseline(html)) % 32 + 48) % 32 - 16)}px}`).join('');
+}
+// Things with free-form height (charts) get rounded up to whole lines so what follows stays on the rules.
+function snap(root = document) {
+  root.querySelectorAll('.snap').forEach(el => {
+    el.style.minHeight = '';
+    const h = el.getBoundingClientRect().height;
+    if (h) el.style.minHeight = Math.ceil(h / 32 - 0.01) * 32 + 'px';
+  });
+}
+
+// ---------- tabs ----------
+const tabs = [...document.querySelectorAll('.tab')];
+function show(id) {
+  tabs.forEach(t => {
+    const on = t.dataset.tab === id;
+    t.setAttribute('aria-selected', on);
+    t.tabIndex = on ? 0 : -1;
+    document.getElementById('p-' + t.dataset.tab).hidden = !on;
+    if (on) $('#page').style.setProperty('--tab', `var(--${t.dataset.c})`);
+  });
+  snap(document.getElementById('p-' + id));
+  renderStickers();
+  try { history.replaceState(null, '', '#' + id); } catch {}
+}
+tabs.forEach((t, i) => {
+  t.onclick = () => show(t.dataset.tab);
+  t.onkeydown = e => {
+    const d = {ArrowRight:1, ArrowLeft:-1}[e.key]; if (!d) return;
+    const n = tabs[(i + d + tabs.length) % tabs.length]; n.focus(); show(n.dataset.tab);
+  };
+});
+
+// ---------- about me ----------
+let P;
+const num = id => { const v = $(id).value.trim(); return v === '' ? '' : +v; };
+const checked = ids => new Set(ids.filter(k => $(k[0] === '#' ? k : '#' + k).checked));
+function readMe() {
+  return {
+    name:$('#f-name').value.trim(), age:num('#f-age'), lb:num('#f-lb'), ft:num('#f-ft'), inch:num('#f-in'), sex:$('#f-sex').value,
+    meas:{waist:num('#f-waist'), hips:num('#f-hips'), chest:num('#f-chest'), arm:num('#f-arm'), thigh:num('#f-thigh'), bf:num('#f-bf')},
+    targets:TARGETS.filter(t => t.v > 0).map(t => ({...t})),
+    lifts:LTARGETS.filter(t => t.v > 0).map(t => ({...t})),
+    goals:new Set(['glutes','tone','bulk','strong','lose','stamina'].filter(g => $('#g-' + g).checked)),
+    days:+$('#f-days').value, mins:+$('#f-mins').value, level:$('#f-level').value,
+    loc:$('#loc-home').checked ? 'home' : 'gym',
+    eq:gearOwned(),
+    cons:new Set(['back','shoulder','knee'].filter(k => $('#c-' + k).checked)),
+  };
+}
+// gear clusters: picking home or gym reveals that list
+function renderGear() {
+  Object.entries(GEAR).forEach(([loc, tiers]) => {
+    $('#gear-' + loc).innerHTML = Object.entries(tiers).map(([tier, list]) => `
+      <p class="label">${tier}</p>
+      <div class="cols">${list.map(([k, name]) => `<label class="chk"><input type="checkbox" id="gear-${loc}-${k}" data-gear="${k}"${GEAR_ON[loc].includes(k) ? ' checked' : ''}> ${name}</label>`).join('')}</div>`).join('');
+  });
+}
+function gearOwned() {
+  const loc = $('#loc-home').checked ? 'home' : 'gym';
+  const own = [...document.querySelectorAll(`#gear-${loc} [data-gear]:checked`)].map(c => c.dataset.gear);
+  return new Set(['bodyweight', ...(loc === 'gym' ? ['bench','mat'] : []), ...own]);
+}
+document.querySelectorAll('[name="loc"]').forEach(r => r.addEventListener('change', () => {
+  $('#gear-home').hidden = !$('#loc-home').checked;
+  $('#gear-gym').hidden = $('#loc-home').checked;
+  $('#me-msg').textContent = 'Save to rebuild your routine with this gear.';
+}));
+renderGear();
+
+// numeric goals: measurement targets ("waist to 31 in") and lift targets ("bench 275 lb"). Both reshape the plan.
+const TMEAS = {weight:['Weight','lb',1], waist:['Waist','in',2], hips:['Hips','in',3], chest:['Chest','in',4], arm:['Upper arm','in',5], thigh:['Thigh','in',6], bf:['Body fat','%',7]};
+const UP = ['upper','push','full'], LOW = ['lower','legs','full'];
+const LIFTS = { // hist = estimated 1RM, weeks 1–8 of the block (sample)
+  bench:{name:'Bench press', types:UP, ex:['Barbell Bench Press','Dumbbell Bench Press','Smith Machine Bench Press'], hist:[228,231,233,236,238,235,242,247]},
+  squat:{name:'Squat', types:LOW, ex:['Barbell Back Squat','Safety Bar Squat','Belt Squat'], hist:[285,290,296,300,305,298,312,318]},
+  deadlift:{name:'Deadlift', types:LOW, ex:['Conventional Deadlift','Trap Bar Deadlift'], hist:[340,345,352,350,358,352,368,378]},
+  ohp:{name:'Overhead press', types:UP, ex:['Standing Overhead Press','Landmine Press','Seated Dumbbell Press'], hist:[138,140,141,143,144,142,146,149]},
+  thrust:{name:'Hip thrust', types:LOW, ex:['Hip Thrust','Hip Thrust Machine'], hist:[250,260,270,275,285,280,295,305]},
+};
+const TARGETS = [{k:'waist', v:31}, {k:'hips', v:40}], LTARGETS = [{k:'bench', v:275}];
+const TL = {
+  m:{list:TARGETS, keys:Object.keys(TMEAS), name:k => TMEAS[k][0], unit:k => TMEAS[k][1], step:0.25,
+     now:k => $(k === 'weight' ? '#f-lb' : '#f-' + k).value || '—'},
+  l:{list:LTARGETS, keys:Object.keys(LIFTS), name:k => LIFTS[k].name, unit:() => 'lb', step:5, now:k => LIFTS[k].hist.at(-1)},
+};
+const sp = unit => unit === '%' ? '%' : ' ' + unit;
+function renderTargets(w) {
+  const T = TL[w];
+  $('#targets-' + w).innerHTML = T.list.map((t, i) => `<li class="target">
+    <select class="hand-in" id="tg${w}-k${i}" data-t="${i}" data-f="k" aria-label="Target">${T.keys.map(k => `<option value="${k}"${k === t.k ? ' selected' : ''}>${T.name(k)}</option>`).join('')}</select>
+    <span class="muted">${T.now(t.k)} →</span>
+    <input class="hand-in" type="number" step="${T.step}" id="tg${w}-v${i}" data-t="${i}" data-f="v" value="${t.v}" placeholder="goal" aria-label="${T.name(t.k)} target">
+    <span class="unit">${T.unit(t.k)}</span>
+    <button class="x" type="button" data-t="${i}" data-del aria-label="Remove ${T.name(t.k)} target">×</button>
+  </li>`).join('');
+}
+Object.entries(TL).forEach(([w, T]) => {
+  const box = $('#targets-' + w);
+  box.addEventListener('change', e => {
+    const {t, f} = e.target.dataset; if (t === undefined) return;
+    T.list[t][f] = f === 'v' ? (e.target.value === '' ? '' : +e.target.value) : e.target.value;
+    if (f === 'k') renderTargets(w);
+  });
+  box.addEventListener('click', e => {
+    if (!('del' in e.target.dataset)) return;
+    T.list.splice(e.target.dataset.t, 1); renderTargets(w);
+  });
+  $('#add-' + w).addEventListener('click', () => {
+    const free = T.keys.find(k => !T.list.some(t => t.k === k)); if (!free) return;
+    T.list.push({k:free, v:''}); renderTargets(w); $(`#tg${w}-v${T.list.length - 1}`).focus();
+  });
+  renderTargets(w);
+});
+
+// how far along, and when you'll get there at the current rate
+function progressTo(name, unit, start, cur, goal, weeks) {
+  const left = +(goal - cur).toFixed(2), total = goal - start;
+  if (left === 0 || (total && Math.sign(left) !== Math.sign(total))) return {name, unit, pct:100, text:'reached. Set a new one'};
+  const rate = weeks ? (cur - start) / weeks : 0, away = rate !== 0 && Math.sign(rate) !== Math.sign(left);
+  const eta = rate && !away ? Math.ceil(Math.abs(left / rate)) : 0;
+  return {name, unit, away, pct:total ? Math.max(0, Math.min(100, (cur - start) / total * 100)) : 0,
+    text:`${Math.abs(left)}${sp(unit)} to go${eta ? `, about ${eta} weeks at your current pace` : ''}`};
+}
+function targetStatus(t) {
+  const [name, unit, col] = TMEAS[t.k];
+  const rows = [...MEAS].sort((a, b) => a[0] < b[0] ? -1 : 1).filter(r => r[col] !== '' && r[col] != null);
+  if (!rows.length) return {name, unit, pct:0, text:'take a first measurement to start tracking'};
+  const first = rows[0], last = rows.at(-1);
+  return progressTo(name, unit, first[col], last[col], t.v, (new Date(last[0]) - new Date(first[0])) / 6048e5);
+}
+function liftStatus(t) { const L = LIFTS[t.k]; return progressTo(L.name, 'lb', L.hist[0], L.hist.at(-1), t.v, L.hist.length - 1); }
+// +1 = target is above today's number, −1 = below
+const dir = t => { const c = t.k === 'weight' ? P.lb : P.meas[t.k]; return c === '' || c == null ? 0 : Math.sign(t.v - c); };
+
+// growing a measurement makes its muscles a priority; a lift target puts that lift first, heavy
+const GROW = {arm:['biceps','triceps'], chest:['chest'], hips:['glutes'], thigh:['quads','hamstrings']};
+const FITS = {chest:UP, triceps:UP, shoulders:UP, back:['upper','pull','full'], biceps:['upper','pull','full'], quads:LOW, hamstrings:LOW, glutes:LOW};
+function planTargets() {
+  R.prio = new Set();
+  P.targets.filter(t => t.k in GROW && dir(t) > 0).forEach(t => {
+    const bumped = [], added = {}, full = [];
+    GROW[t.k].forEach(m => {
+      R.prio.add(m);
+      const have = tally()[m];
+      if (have >= 20) return full.push(`${m} already get ${have} sets a week, plenty to grow`);
+      const items = R.days.flatMap(d => d.items), main = items.filter(it => BY[it.ex].m[0] === m && it.sets < 5);
+      const hits = (main.length ? main : items.filter(it => BY[it.ex].m.includes(m) && it.sets < 5)).slice(0, 2);
+      if (hits.length) return hits.forEach(it => { it.sets++; bumped.push(it.ex); });
+      const x = cands(FIX[m])[0]; if (!x) return;
+      R.days.filter(d => FITS[m].includes(d.type)).forEach(d => { d.items.push(item(FIX[m], x)); (added[x.n] ??= []).push(d.day.split(' · ')[0]); });
+    });
+    const did = [bumped.length && `+1 set on ${[...new Set(bumped)].join(', ')}`,
+      Object.keys(added).length && `added ${Object.entries(added).map(([n, ds]) => `${n} (${ds.join(', ')})`).join(' and ')}`, ...full].filter(Boolean);
+    if (did.length) R.notes.push({text:`${TMEAS[t.k][0]} to ${t.v} in: ${did.join('; ')}.`});
+  });
+  P.lifts.forEach(t => {
+    const L = LIFTS[t.k], x = L.ex.map(n => BY[n]).find(x => x.e.some(k => P.eq.has(k)) && !x.avoid.some(a => P.cons.has(a)));
+    if (!x) return R.notes.push({text:`${L.name} to ${t.v} lb: your gear or joint settings rule out every version of this lift.`});
+    const fit = R.days.filter(d => L.types.includes(d.type));
+    const day = fit.find(d => d.items.some(it => it.p === x.p)) || fit[0] || R.days[0];
+    const i = day.items.findIndex(it => it.p === x.p); if (i >= 0) day.items.splice(i, 1);
+    day.items.unshift({p:x.p, ex:x.n, sets:4, reps:'3–5', rest:180});
+    R.notes.push({text:`${L.name} to ${t.v} lb: ${x.n} now opens ${day.day.split(' · ')[0]} at 4 × 3–5, heavy. Estimated max today: ${L.hist.at(-1)}.`});
+  });
+}
+
+function problems(p) {
+  const out = [];
+  if (!p.name) out.push('your name');
+  if (!(p.lb >= 60 && p.lb <= 700)) out.push('weight (60–700 lb)');
+  if (!(p.ft >= 3 && p.ft <= 8) || !(p.inch >= 0 && p.inch < 12)) out.push('height');
+  if (!(p.age >= 13 && p.age <= 100)) out.push('age (13–100)');
+  return out;
+}
+const GOAL_NAMES = {glutes:'grow glutes', tone:'tone up', bulk:'bulk up', strong:'get stronger', lose:'lose fat', stamina:'improve stamina'};
+function goalKey(g) {
+  if (g.has('strong')) return 'str';
+  if ((g.has('stamina') || g.has('lose')) && !g.has('bulk')) return 'cond';
+  if (g.has('bulk') || g.has('tone') || g.has('glutes')) return 'hyp';
+  return 'gen';
+}
+// coach notes for About Me, grouped so each sits beside the section it's about
+function meNotes(p) {
+  const n = {basics:[], meas:[], goals:[], targets:[], train:[]};
+  n.basics.push(`That works out to about ${targets().kcal.toLocaleString()} kcal a day for your goals. The Nutrition tab has the breakdown.`);
+  const missing = Object.entries(p.meas).filter(([, v]) => v === '').map(([k]) => TMEAS[k][0].toLowerCase());
+  n.meas.push(missing.length
+    ? `Add your ${missing.join(' and ')} when you can. Measurements catch fat loss and muscle gain the scale averages out.`
+    : 'All measured. Retake them every two weeks, same time of day.');
+  if (!p.goals.size) n.goals.push('Check at least one goal so I know what to build toward.');
+  if (p.goals.has('bulk') && (p.goals.has('lose') || p.goals.has('tone'))) n.goals.push('Bulking and leaning out pull in opposite directions. I’ll hold calories at maintenance until you pick one.');
+  if (p.goals.has('glutes')) n.goals.push('Grow glutes: every lower-body day gets a glute-focused lift, and glute volume gets its own check.');
+  if (p.goals.has('stamina')) n.goals.push('Improve stamina: rest drops to about a minute, and every day ends with a short finisher.');
+  const short = st => `${st.name}: ${st.text.replace(' at your current pace', '')}${st.away ? ', but it’s been trending the other way' : ''}.`;
+  p.targets.forEach(t => n.targets.push(short(targetStatus(t))));
+  p.lifts.forEach(t => n.targets.push(short(liftStatus(t))));
+  if (!n.targets.length) n.targets.push('Add a number to aim for, like a waist size or a bench press. The plan bends toward it.');
+  if (p.loc === 'home' && p.eq.size < 5) n.train.push('At home, bands are the cheapest upgrade. Mini loops and bands with handles unlock rows, pulldowns and glute work.');
+  else n.train.push('Rarer gear gets used first, so the routine stays interesting.');
+  if (p.cons.size) n.train.push(`Going easy on your ${[...p.cons].map(c => JOINT[c]).join(' and ')}: lifts that load them are left out.`);
+  return n;
+}
+$('#me').addEventListener('submit', e => {
+  e.preventDefault();
+  const p = readMe(), bad = problems(p);
+  if (bad.length) { $('#me-msg').textContent = `Check ${bad.join(', ')}.`; return; }
+  P = p; applyProfile();
+  $('#me-msg').textContent = 'Saved. Routine, nutrition and progress are updated.';
+});
+function applyProfile() {
+  const m = P.meas, row = [TODAY, P.lb, m.waist, m.hips, m.chest, m.arm, m.thigh, m.bf];
+  const i = MEAS.findIndex(r => r[0] === TODAY); i >= 0 ? MEAS[i] = row : MEAS.push(row);
+  Object.entries(meNotes(P)).forEach(([k, list]) => { $('#n-' + k).innerHTML = list.map(t => `<li>${t}</li>`).join(''); });
+  generate(); renderFood(); renderMeas(); renderLib();
+}
+
+// ---------- workout log ----------
+const LOG = [
+  {n:'Barbell Bench Press', lo:6, hi:10, inc:5, rpe:8, last:'180 × 10, 10, 9', best:240, sets:[[185,10,8,1],[185,10,8.5,1],[185,10,9,1]]},
+  {n:'Barbell Row', lo:6, hi:10, inc:5, rpe:8, last:'165 × 8, 7, 7', best:220, sets:[[165,9,8,1],[165,8,8.5,1],[165,8,9,1]]},
+  {n:'Standing Overhead Press', lo:6, hi:10, inc:5, rpe:8, last:'115 × 8, 7, 6', best:152, sets:[[115,8,8.5,1],[115,7,9,1],[115,5,10,1]]},
+  {n:'Dumbbell Lateral Raise', lo:10, hi:15, inc:2.5, rpe:9, last:'20 × 14, 13, 12', best:29, sets:[[20,15,8,1],[20,14,9,1],['','','',0]]},
+];
+// double progression: fill the rep range on every set, then add weight
+function advice(x) {
+  const done = x.sets.filter(s => s[0] > 0 && s[1] > 0);
+  if (!done.length) return ['Log a set and I’ll suggest your next jump.'];
+  const w = Math.max(...done.map(s => +s[0])), top = Math.max(...done.map(s => e1rm(+s[0], +s[1])));
+  const est = `Est. 1RM ${top} lb${top > x.best ? ' · <span class="hl">new PR</span>' : ''}`;
+  const short = done.findIndex(s => s[1] < x.lo);
+  if (short >= 0) return [`Set ${short + 1} fell under ${x.lo} reps. Stay at ${w} lb. If it happens again, drop to ${Math.round(w * 0.9 / 5) * 5}.`, est];
+  if (done.every(s => s[1] >= x.hi)) return [`Every set hit ${x.hi}. Go up to ${w + x.inc} lb next time.`, est];
+  return [`Stay at ${w} lb and beat ${done.map(s => s[1]).join(', ')}. Add ${x.inc} lb once every set hits ${x.hi}.`, est];
+}
+function renderSummary() {
+  const all = LOG.flatMap(x => x.sets), done = all.filter(s => s[3] && s[0] > 0 && s[1] > 0);
+  $('#summary').textContent = `${done.length} of ${all.length} sets · ${done.reduce((a, s) => a + s[0] * s[1], 0).toLocaleString()} lb moved`;
+}
+function renderNote(i) { document.getElementById('note-' + i).innerHTML = advice(LOG[i]).map(t => `<li>${t}</li>`).join(''); }
+function renderLog() {
+  $('#exercises').innerHTML = LOG.map((x, i) => `
+    <article class="ex split">
+      <div>
+        <h2>${x.n}</h2>
+        <p class="small">${x.sets.length} × ${x.lo}–${x.hi} at RPE ${x.rpe} · last time ${x.last}</p>
+        <div class="scroll"><table class="sets">
+          <thead><tr><th>Set</th><th>lb</th><th>Reps</th><th>RPE</th><th>Done</th></tr></thead>
+          <tbody>${x.sets.map((s, j) => `<tr>
+            <td>${j + 1}</td>
+            <td><input class="hand-in" type="number" inputmode="decimal" step="2.5" id="s${i}-${j}-0" data-i="${i}" data-j="${j}" data-k="0" value="${s[0]}" placeholder="lb" aria-label="Set ${j + 1} weight"></td>
+            <td><input class="hand-in" type="number" inputmode="numeric" id="s${i}-${j}-1" data-i="${i}" data-j="${j}" data-k="1" value="${s[1]}" placeholder="reps" aria-label="Set ${j + 1} reps"></td>
+            <td><input class="hand-in" type="number" inputmode="decimal" step="0.5" id="s${i}-${j}-2" data-i="${i}" data-j="${j}" data-k="2" value="${s[2]}" placeholder="rpe" aria-label="Set ${j + 1} RPE"></td>
+            <td><input type="checkbox" id="s${i}-${j}-3" data-i="${i}" data-j="${j}" data-k="3" ${s[3] ? 'checked' : ''} aria-label="Set ${j + 1} done"></td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+        <p><button class="link" type="button" data-add="${i}">+ add a set</button></p>
+      </div>
+      <aside><ul class="note" id="note-${i}" aria-live="polite" style="padding-top:32px"></ul></aside>
+    </article>`).join('');
+  LOG.forEach((_, i) => renderNote(i));
+  renderSummary();
+}
+$('#exercises').addEventListener('input', e => {
+  const {i, j, k} = e.target.dataset; if (i === undefined) return;
+  LOG[i].sets[j][k] = k === '3' ? +e.target.checked : (e.target.value === '' ? '' : +e.target.value);
+  renderNote(i); renderSummary();
+});
+$('#exercises').addEventListener('click', e => {
+  const i = e.target.dataset.add; if (i === undefined) return;
+  const s = LOG[i].sets; s.push(s.at(-1).map((v, k) => k === 3 ? 0 : v)); renderLog();
+});
+
+// ---------- routine ----------
+const DAY = {
+  full:['squat','hpush','hpull','hinge','vpush','vpull','core'],
+  upper:['hpush','hpull','vpush','vpull','lateral','biceps','triceps'],
+  lower:['squat','hinge','lunge','kneeflex','calves','core'],
+  push:['hpush','vpush','incline','lateral','triceps','core'],
+  pull:['vpull','hpull','reardelt','biceps','core'],
+  legs:['squat','hinge','lunge','kneeflex','calves'],
+};
+const TYPE = {full:'Full Body', upper:'Upper', lower:'Lower', push:'Push', pull:'Pull', legs:'Legs'};
+const SPLIT = {2:['full','full'], 3:['full','full','full'], 4:['upper','lower','upper','lower'], 5:['upper','lower','push','pull','legs'], 6:['push','pull','legs','push','pull','legs']};
+const WEEK = {2:['Mon','Thu'], 3:['Mon','Wed','Fri'], 4:['Mon','Tue','Thu','Fri'], 5:['Mon','Tue','Wed','Fri','Sat'], 6:['Mon','Tue','Wed','Thu','Fri','Sat']};
+const CAP = {45:4, 60:5, 75:6, 90:7};
+const COMPOUND = new Set(['squat','hinge','lunge','hpush','vpush','hpull','vpull','incline','glute']);
+const GOAL = { // [compound, accessory]: sets, reps, rest seconds
+  str:[[4,'3–5',180],[3,'6–8',120]], hyp:[[3,'6–10',120],[3,'10–15',90]],
+  cond:[[3,'10–12',60],[2,'12–15',45]], gen:[[3,'8–10',120],[2,'10–12',90]],
+};
+const FIX = {chest:'incline', back:'hpull', shoulders:'lateral', biceps:'biceps', triceps:'triceps', quads:'lunge', hamstrings:'kneeflex', glutes:'glute'};
+let R, ACTIONS = [];
+
+// rarest gear you own comes first, so a belt squat or GHD gets used instead of sitting idle
+const rarity = x => Math.max(...x.e.map(k => P.eq.has(k) ? RARE[k] ?? 0 : -1));
+const cands = p => EX.filter(x => x.p === p && x.e.some(k => P.eq.has(k)) && !x.avoid.some(a => P.cons.has(a)))
+  .sort((a, b) => rarity(b) - rarity(a));
+const GAP = {vpull:['pulldowns','a doorway pull-up bar or bands with handles'], hpull:['rows','bands with handles or dumbbells'], kneeflex:['hamstring curls','a stability ball or sliders'], hinge:['hip hinges','a kettlebell or dumbbells']};
+function scheme(p) {
+  if (p === 'finisher') return {sets:4, reps:'30 s on/off', rest:30};
+  const [sets, reps, rest] = GOAL[goalKey(P.goals)][COMPOUND.has(p) ? 0 : 1];
+  return {sets: sets + (P.level === 'adv') - (P.level === 'beg' && !COMPOUND.has(p) && sets > 2), reps, rest};
+}
+const item = (p, x) => ({p, ex:x.n, ...scheme(p)});
+const minutes = d => Math.round(8 + d.items.reduce((a, it) => a + it.sets * (40 + it.rest), 0) / 60);
+function patterns(type) {
+  const list = [...DAY[type]];
+  if (P.goals.has('glutes') && ['lower','legs','full'].includes(type)) list.splice(list.indexOf('hinge') + 1, 0, 'glute');
+  return [...list.slice(0, CAP[P.mins]), ...(P.goals.has('stamina') ? ['finisher'] : [])];
+}
+function generate() {
+  const types = SPLIT[P.days], seen = {};
+  R = {notes:[]};
+  R.days = types.map((type, k) => {
+    const v = seen[type] = (seen[type] ?? -1) + 1, repeats = types.filter(t => t === type).length > 1;
+    return {type, day:`${WEEK[P.days][k]} · ${TYPE[type]}${repeats ? ' ' + 'ABC'[v] : ''}`,
+      items:patterns(type).map(p => { const c = cands(p); return c.length && item(p, c[v % c.length]); }).filter(Boolean)};
+  });
+  planTargets();
+  P.cons.forEach(c => {
+    const out = EX.filter(x => x.avoid.includes(c) && x.e.some(k => P.eq.has(k))).map(x => x.n).slice(0, 2);
+    if (out.length) R.notes.push({text:`Left out ${out.join(' and ')}. They tend to bother the ${JOINT[c]}.`});
+  });
+  const fancy = [...new Set(R.days.flatMap(d => d.items).filter(it => rarity(BY[it.ex]) === 2).map(it => it.ex))];
+  if (fancy.length) R.notes.push({text:`Specialty gear in play: ${fancy.join(', ')}. ${fancy.length > 1 ? "Swap any of them" : "Swap it"} from the dropdowns.`});
+  const used = new Set(types.flatMap(patterns));
+  Object.entries(GAP).forEach(([p, [what, fix]]) => { if (used.has(p) && !cands(p).length) R.notes.push({text:`Nothing in your gear covers ${what}. ${cap(fix)} would fill the gap.`}); });
+  const [c, a] = GOAL[goalKey(P.goals)], goals = [...P.goals].map(g => GOAL_NAMES[g]);
+  $('#r-basis').textContent = `For ${goals.join(' and ') || 'general fitness'}${R.prio.size ? ' · priority: ' + [...R.prio].join(', ') : ''} · ${P.days} days, ${P.mins} min · rest ${c[2] >= 120 ? c[2] / 60 + ' min' : c[2] + ' s'} on big lifts, ${a[2]} s on the rest`;
+  renderRoutine();
+}
+function tally() {
+  const t = Object.fromEntries(MUSCLES.map(m => [m, 0]));
+  R.days.forEach(d => d.items.forEach(it => { const x = BY[it.ex]; x.m.forEach(m => t[m] += it.sets); x.s.forEach(m => t[m] += it.sets / 2); }));
+  return t;
+}
+function findRow(test) { for (const d of R.days) for (const it of d.items) if (test(it)) return {d, it}; }
+function suggestions(t) {
+  const out = [...R.notes];
+  Object.keys(FIX).filter(m => t[m] < 10).sort((a, b) => t[a] - t[b]).forEach(m => {
+    const text = `${cap(m)}: ${t[m]} sets a week, under the 10–20 range.`;
+    const hit = findRow(it => BY[it.ex].m.includes(m) && it.sets < 5);
+    if (hit) return out.push({text, act:`+1 set of ${hit.it.ex}`, fn:() => hit.it.sets++});
+    const p = FIX[m], x = cands(p)[0]; if (!x) return;
+    const day = [...R.days].sort((a, b) => (DAY[b.type].includes(p) - DAY[a.type].includes(p)) || a.items.length - b.items.length)[0];
+    out.push({text, act:`Add ${x.n} to ${day.day.split(' · ')[0]}`, fn:() => day.items.push(item(p, x))});
+  });
+  Object.keys(FIX).filter(m => t[m] > (R.prio.has(m) ? 26 : 20)).forEach(m => {
+    const hit = findRow(it => BY[it.ex].m.includes(m) && it.sets > 2);
+    out.push({text:`${cap(m)}: ${t[m]} sets a week, more than most people recover from.`, ...(hit && {act:`−1 set of ${hit.it.ex}`, fn:() => hit.it.sets--})});
+  });
+  R.days.forEach(d => { const m = minutes(d); if (m > P.mins + 5) out.push({text:`${d.day} runs about ${m} min, over your ${P.mins}. Trim a set.`}); });
+  return out.slice(0, 6);
+}
+function renderRoutine() {
+  $('#days').innerHTML = R.days.map((d, di) => `
+    <div class="day">
+      <h3>${d.day}</h3>
+      <p class="small">about ${minutes(d)} min</p>
+      <ol>${d.items.map((it, ii) => {
+        const opts = cands(it.p); if (!opts.some(o => o.n === it.ex)) opts.unshift(BY[it.ex]);
+        return `<li>
+          <select class="hand-in" id="r${di}-${ii}" data-d="${di}" data-i="${ii}" aria-label="Exercise">${opts.map(o => `<option${o.n === it.ex ? ' selected' : ''}>${o.n}</option>`).join('')}</select>
+          <input class="hand-in" type="number" min="1" max="8" id="rs${di}-${ii}" data-d="${di}" data-i="${ii}" data-sets value="${it.sets}" aria-label="Sets of ${it.ex}">
+          <span class="muted">× ${it.reps}</span>
+          <button class="x" type="button" data-d="${di}" data-i="${ii}" data-del aria-label="Remove ${it.ex}">×</button>
+        </li>`; }).join('')}</ol>
+    </div>`).join('');
+  const t = tally();
+  $('#tally').innerHTML = MUSCLES.map(m => {
+    const v = t[m], s = v < 10 ? 'low' : v > (R.prio.has(m) ? 26 : 20) ? 'high' : 'ok';
+    return `<div class="bar-row"><span>${m}${R.prio.has(m) ? ' <span class="prio">★</span>' : ''}</span>
+      <div class="track"><div class="zone"></div><div class="fill" style="width:${Math.min(v, 25) * 4}%"></div></div>
+      <span class="st-${s}">${v} ${s === 'ok' ? '✓' : s}</span></div>`;
+  }).join('');
+  ACTIONS = suggestions(t);
+  $('#r-notes').innerHTML = ACTIONS.length
+    ? ACTIONS.map((n, k) => `<li>${n.text}${n.act ? `<br><button class="link" type="button" data-fix="${k}">${n.act} →</button>` : ''}</li>`).join('')
+    : '<li>Balanced week. Nothing to flag.</li>';
+}
+$('#days').addEventListener('change', e => {
+  const {d, i} = e.target.dataset; if (d === undefined) return;
+  const it = R.days[d].items[i];
+  if ('sets' in e.target.dataset) it.sets = Math.max(1, Math.min(8, +e.target.value || 1)); else it.ex = e.target.value;
+  renderRoutine();
+});
+$('#days').addEventListener('click', e => {
+  if (!('del' in e.target.dataset)) return;
+  R.days[e.target.dataset.d].items.splice(e.target.dataset.i, 1); renderRoutine();
+});
+$('#r-notes').addEventListener('click', e => {
+  const k = e.target.dataset.fix; if (k === undefined) return;
+  ACTIONS[k].fn(); renderRoutine();
+});
+
+// ---------- nutrition ----------
+const FOOD = [
+  ['Breakfast','3 eggs, 2 slices toast',390,25,30,18],
+  ['Breakfast','Greek yogurt, berries',200,20,25,2],
+  ['Lunch','Chicken rice bowl',650,45,75,15],
+  ['Snack','Protein shake, banana',250,26,30,3],
+];
+function targets() {
+  // Mifflin-St Jeor × activity, then adjust for the goal. Protein 0.8 g/lb, fat 0.3 g/lb, carbs fill the rest.
+  const kg = P.lb * 0.4536, cm = (P.ft * 12 + P.inch) * 2.54;
+  const bmr = 10 * kg + 6.25 * cm - 5 * P.age + (P.sex === 'm' ? 5 : -161);
+  const tdee = bmr * {2:1.375, 3:1.45, 4:1.55, 5:1.6, 6:1.725}[P.days];
+  // goals and targets decide the direction: lean out, build, or both at once (recomp)
+  const g = P.goals, conflict = g.has('bulk') && (g.has('lose') || g.has('tone'));
+  const wt = P.targets.find(t => t.k === 'weight' && dir(t)), down = P.targets.filter(t => t.k !== 'weight' && dir(t) < 0), up = P.targets.filter(t => t.k in GROW && dir(t) > 0);
+  const lean = g.has('lose') || g.has('tone') || down.length, grow = g.has('bulk') || up.length;
+  const names = ts => ts.map(t => TMEAS[t.k][0].toLowerCase()).join(' and ');
+  const [adj, why] = conflict ? [0, 'at maintenance until you pick bulk or lean out']
+    : wt ? (dir(wt) < 0 ? [-500, `about 500 under maintenance to reach ${wt.v} lb`] : [300, `about 300 over maintenance to reach ${wt.v} lb`])
+    : lean && grow ? [-250, `a small deficit for a recomp${down.length && up.length ? `, so your ${names(down)} can come down while your ${names(up)} grow` : ''}`]
+    : grow ? [300, 'about 300 over maintenance to build size']
+    : g.has('lose') ? [-500, 'about 500 under maintenance to lose fat']
+    : lean ? [-250, 'about 250 under maintenance to lean out'] : [0, 'at maintenance'];
+  const kcal = Math.round((tdee + adj) / 50) * 50, p = Math.round(P.lb * (grow ? 1 : 0.8)), f = Math.round(P.lb * 0.3);
+  return {kcal, p, f, c:Math.max(0, Math.round((kcal - p * 4 - f * 9) / 4)), why:why + (grow ? '. Protein is set to 1 g per lb to support growth' : '')};
+}
+function renderFood() {
+  const T = targets(), sum = k => FOOD.reduce((a, r) => a + r[k], 0), eaten = {kcal:sum(2), p:sum(3), c:sum(4), f:sum(5)};
+  $('#n-basis').textContent = `Daily target ${T.kcal.toLocaleString()} kcal, ${T.why}. Based on your About Me page.`;
+  $('#macros').innerHTML = [['Calories','kcal',''],['Protein','p',' g'],['Carbs','c',' g'],['Fat','f',' g']].map(([name, k, u]) => {
+    const pct = Math.min(100, eaten[k] / T[k] * 100 || 0);
+    return `<div class="bar-row"><span>${name}</span><div class="track"><div class="fill" style="width:${pct}%${eaten[k] > T[k] * 1.05 ? ';background:var(--warn)' : ''}"></div></div>
+      <span class="muted">${eaten[k].toLocaleString()} / ${T[k].toLocaleString()}${u}</span></div>`;
+  }).join('');
+  $('#food-rows').innerHTML = FOOD.map(r => `<tr><td class="muted">${r[0]}</td><td>${r[1].replace(/</g, '&lt;')}</td>${r.slice(2).map(v => `<td class="num">${v}</td>`).join('')}</tr>`).join('');
+  const notes = [], pLeft = T.p - eaten.p, kLeft = T.kcal - eaten.kcal;
+  if (pLeft > 40) notes.push(`${pLeft} g protein to go. Two palm-size portions of chicken, fish or tofu covers it.`);
+  else if (pLeft > 15) notes.push(`${pLeft} g protein to go. One palm-size portion of chicken, fish or tofu at dinner covers it.`);
+  else if (pLeft > 0) notes.push(`Only ${pLeft} g protein left. A Greek yogurt finishes it.`);
+  else notes.push('Protein target hit. Nice.');
+  notes.push(kLeft > 0 ? `${kLeft.toLocaleString()} kcal left for the day.` : `${(-kLeft).toLocaleString()} kcal over. One day won't matter; the weekly average does.`);
+  if (P.goals.has('stamina')) notes.push('Training for stamina: have some carbs 1–2 hours before you train.');
+  $('#n-notes').innerHTML = notes.map(t => `<li>${t}</li>`).join('');
+}
+$('#food-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const food = $('#n-food').value.trim(), vals = ['kcal','p','c','f'].map(k => +$('#n-' + k).value || 0);
+  if (!food || !vals[0]) { $('#n-msg').textContent = 'Add a food name and its calories.'; return; }
+  FOOD.push([$('#n-meal').value, food, ...vals]); renderFood();
+  $('#n-msg').textContent = `Added ${food}.`;
+  ['food','kcal','p','c','f'].forEach(k => $('#n-' + k).value = '');
+});
+
+// ---------- charts ----------
+function ticks(min, max, n = 4) {
+  const raw = (max - min) / n || 1, mag = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw);
+  const t = []; for (let v = Math.floor(min / step) * step; v <= Math.ceil(max / step) * step + 1e-9; v += step) t.push(+v.toFixed(2));
+  return t;
+}
+function lineChart(el, labels, series, label) {
+  const W = 600, H = 224, L = 44, Rt = 110, T = 12, B = 28;
+  const all = series.flatMap(s => s.data), tk = ticks(Math.min(...all), Math.max(...all));
+  const x = i => L + i * (W - L - Rt) / Math.max(1, labels.length - 1), y = v => T + (H - T - B) * (1 - (v - tk[0]) / (tk.at(-1) - tk[0]));
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">`;
+  tk.forEach(v => s += `<text class="tick" x="${L - 10}" y="${y(v) + 4}" text-anchor="end">${v}</text>`);
+  labels.forEach((l, i) => s += `<text class="tick" x="${x(i)}" y="${H - 6}" text-anchor="middle">${l}</text>`);
+  series.forEach(se => {
+    const k = se.data.length - 1;
+    s += `<polyline fill="none" stroke="${se.color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" points="${se.data.map((v, i) => x(i) + ',' + y(v)).join(' ')}"/>
+      <circle cx="${x(k)}" cy="${y(se.data[k])}" r="4" fill="${se.color}"/>
+      <text class="end" x="${x(k) + 10}" y="${y(se.data[k]) + 5}" fill="${se.color}">${se.name} ${se.data[k]}</text>`;
+  });
+  el.innerHTML = s + '</svg>';
+}
+function barChart(el, labels, data, deload) {
+  const W = 400, H = 224, L = 34, T = 20, B = 28, bw = (W - L) / data.length;
+  const tk = ticks(0, Math.max(...data)), y = v => T + (H - T - B) * (1 - v / tk.at(-1));
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Weekly volume in thousands of pounds">`;
+  tk.forEach(v => s += `<text class="tick" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`);
+  data.forEach((v, i) => {
+    const bx = L + i * bw + bw * .22, d = i === deload;
+    s += `<rect x="${bx}" y="${y(v)}" width="${bw * .56}" height="${y(0) - y(v)}" rx="2" fill="${d ? 'none' : 'var(--ink)'}" stroke="var(--ink)" stroke-width="1.4" ${d ? 'stroke-dasharray="3 3"' : ''} opacity=".85"/>
+      <text class="tick" x="${bx + bw * .28}" y="${H - 6}" text-anchor="middle">${labels[i]}</text>`;
+    if (d) s += `<text class="tick" x="${bx + bw * .28}" y="${y(v) - 6}" text-anchor="middle">deload</text>`;
+  });
+  el.innerHTML = s + '</svg>';
+}
+const WEEKS = ['W1','W2','W3','W4','W5','W6','W7','W8'];
+lineChart($('#c-1rm'), WEEKS, [
+  {name:'Deadlift', color:'var(--red)', data:LIFTS.deadlift.hist},
+  {name:'Squat', color:'var(--ok)', data:LIFTS.squat.hist},
+  {name:'Bench', color:'var(--ink)', data:LIFTS.bench.hist},
+], 'Estimated one-rep max for deadlift, squat and bench over 8 weeks');
+barChart($('#c-vol'), WEEKS, [38,41,43,45,47,33,46,49], 5);
+
+// ---------- body measurements ----------
+const MEAS = [ // date, weight, waist, hips, chest, arm, thigh, body fat
+  ['2026-07-29',182.4,34.5,39.5,41,15,23.5,19.4],
+  ['2026-08-12',181.0,34.25,39.5,41.25,15,23.5,19.0],
+  ['2026-08-26',180.2,34,39.25,41.25,15.25,23.75,18.6],
+  ['2026-09-09',179.6,33.75,39.25,41.5,15.25,23.75,18.2],
+];
+const fmtDate = d => new Date(d + 'T00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'});
+function renderMeas() {
+  const rows = [...MEAS].sort((a, b) => a[0] < b[0] ? -1 : 1);
+  $('#meas-rows').innerHTML = rows.map(r => `<tr><td>${fmtDate(r[0])}</td>${r.slice(1).map(v => `<td class="num">${v === '' ? '<span class="muted">—</span>' : v}</td>`).join('')}</tr>`).join('');
+  lineChart($('#c-bw'), rows.map(r => fmtDate(r[0])), [{name:'lb', color:'var(--ink)', data:rows.map(r => r[1])}], 'Bodyweight over time');
+  const all = [...P.targets.map(t => [t, targetStatus(t)]), ...P.lifts.map(t => [t, liftStatus(t)])];
+  $('#t-bars').innerHTML = all.length ? all.map(([t, st]) => `<div class="bar-row wide"><span>${st.name} → ${t.v}${sp(st.unit)}</span>
+      <div class="track"><div class="fill" style="width:${st.pct}%${st.away ? ';background:var(--warn)' : ''}"></div></div>
+      <span class="${st.away ? 'st-high' : 'muted'}">${st.text.split(',')[0]}${st.away ? ', trending away' : ''}</span></div>`).join('')
+    : '<p class="muted">No targets yet. Add one on About Me.</p>';
+  snap($('#p-progress'));
+}
+
+// ---------- library ----------
+$('#lib-m').insertAdjacentHTML('beforeend', MUSCLES.map(m => `<option>${m}</option>`).join(''));
+function renderLib() {
+  const q = $('#lib-q').value.trim().toLowerCase(), m = $('#lib-m').value;
+  const mine = $('#lib-mine').checked;
+  const list = EX.filter(x => (!q || x.n.toLowerCase().includes(q)) && (!m || x.m.includes(m) || x.s.includes(m)) && (!mine || x.e.some(k => P.eq.has(k))));
+  $('#cards').innerHTML = list.length ? list.map(x => `
+    <article class="card">
+      <h3>${x.n}</h3>
+      <p><span class="tag">Works</span>${x.m.join(', ') || 'heart and lungs'}${x.s.length ? `<span class="muted"> + ${x.s.join(', ')}</span>` : ''}</p>
+      <p><span class="tag">Needs</span>${x.e.map(k => GEAR_NAME[k]).join(' or ')}${x.e.some(k => RARE[k] === 2) ? '<span class="muted"> · specialty</span>' : ''}</p>
+      <ul>${x.cues.map(c => `<li>${c}</li>`).join('')}</ul>
+      ${x.avoid.length ? `<p class="note">Careful with ${x.avoid.map(a => JOINT[a]).join(', ')}</p>` : ''}
+    </article>`).join('') : '<p class="muted">No cards match. Try another word.</p>';
+}
+$('#lib-q').addEventListener('input', renderLib);
+$('#lib-m').addEventListener('change', renderLib);
+$('#lib-mine').addEventListener('change', renderLib);
+
+// ---------- stickers ----------
+// They live in a layer between the paper and the writing, so text always reads on top.
+// ponytail: saved in this browser only (localStorage); a real account would store them with the notebook.
+const die = (shapes, fill) => `<g fill="#fff" stroke="#fff" stroke-width="7" stroke-linejoin="round">${shapes}</g><g fill="${fill}">${shapes}</g>`;
+const burst = (n, r1, r2, c = 32) => 'M' + Array.from({length:n * 2}, (_, i) => {
+  const r = i % 2 ? r2 : r1, a = Math.PI * i / n - Math.PI / 2;
+  return (c + r * Math.cos(a)).toFixed(1) + ' ' + (c + r * Math.sin(a)).toFixed(1);
+}).join(' L') + 'Z';
+const label = (x, y, size, fill, text) => `<text x="${x}" y="${y}" text-anchor="middle" font-family="Karla,sans-serif" font-weight="700" font-size="${size}" fill="${fill}">${text}</text>`;
+const STICKERS = {
+  star:['Gold star', die(`<path d="${burst(5, 29, 12)}"/>`, '#f2c14e') + `<path d="${burst(5, 16, 7)}" fill="#f8da86"/>`],
+  pr:['PR!', die(`<path d="${burst(14, 30, 24)}"/>`, '#d9483b') + label(32, 38, 17, '#fff', 'PR!')],
+  plus5:['+5 lb', die('<path d="M5 20h41l13 12-13 12H5z"/>', '#f2c14e') + '<circle cx="47" cy="32" r="3" fill="#fff"/>' + label(24, 37, 13, '#3a2f10', '+5 lb')],
+  nice:['Nice!', die('<rect x="5" y="18" width="54" height="28" rx="14"/>', '#3f8f5a') + label(32, 37, 15, '#fff', 'Nice!')],
+  legday:['Leg day', die('<path d="M3 21h58l-5 11 5 11H3l5-11z"/>', '#7b5ea7') + label(32, 36, 11, '#fff', 'LEG DAY')],
+  check:['Done', die('<circle cx="32" cy="32" r="26"/>', '#4a9d6b') + '<path d="M20 33l8 8 16-17" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>'],
+  dumbbell:['Dumbbell', die('<rect x="14" y="28" width="36" height="8" rx="2"/><rect x="8" y="15" width="9" height="34" rx="3"/><rect x="47" y="15" width="9" height="34" rx="3"/><rect x="3" y="22" width="6" height="20" rx="2"/><rect x="55" y="22" width="6" height="20" rx="2"/>', '#2d3f7a')],
+  kettlebell:['Kettlebell', die('<path d="M20 31v-8a12 12 0 0 1 24 0v8h-6v-8a6 6 0 0 0-12 0v8z"/><circle cx="32" cy="42" r="17"/>', '#3b3b3b') + '<path d="M23 38a10 10 0 0 1 6-6" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".45"/>'],
+  trophy:['Trophy', die('<path d="M18 8h28v13a14 14 0 0 1-28 0z"/><rect x="28" y="33" width="8" height="10"/><rect x="19" y="43" width="26" height="9" rx="2"/>', '#e0a82e') + '<path d="M18 12h-7v4a8 8 0 0 0 8 8M46 12h7v4a8 8 0 0 1-8 8" fill="none" stroke="#e0a82e" stroke-width="4" stroke-linecap="round"/>'],
+  flame:['Flame', die('<path d="M32 60c-12 0-20-8-20-19 0-9 6-14 9-22 2 5 5 7 8 8-1-8 3-17 11-23 0 10 12 16 12 32 0 14-8 24-20 24z"/>', '#f08a3c') + '<path d="M32 56c-6 0-10-4-10-10 0-5 4-8 6-12 2 4 4 5 6 5 0-4 2-7 4-9 1 6 4 9 4 15 0 7-4 11-10 11z" fill="#fbd35a"/>'],
+  bolt:['Lightning', die('<path d="M37 4 13 36h15l-5 24 28-35H36l5-21z"/>', '#f7d154')],
+  heart:['Heart', die('<path d="M32 56C14 43 6 33 6 22a12 12 0 0 1 26-7 12 12 0 0 1 26 7c0 11-8 21-26 34z"/>', '#e8707f') + '<path d="M16 19a7 7 0 0 1 8-3" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".7"/>'],
+  sun:['Sun', die(`<path d="${burst(12, 30, 21)}"/>`, '#f7b733') + '<circle cx="32" cy="32" r="17" fill="#ffd45e"/><circle cx="26" cy="29" r="2" fill="#7a4a00"/><circle cx="38" cy="29" r="2" fill="#7a4a00"/><path d="M25 36a8 8 0 0 0 14 0" fill="none" stroke="#7a4a00" stroke-width="2.5" stroke-linecap="round"/>'],
+  drop:['Water', die('<path d="M32 5C24 20 14 30 14 40a18 18 0 0 0 36 0c0-10-10-20-18-35z"/>', '#5aa9e6') + '<path d="M23 40a9 9 0 0 0 6 9" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".7"/>'],
+  apple:['Apple', die('<path d="M32 19c-6-5-22-4-22 13 0 14 10 26 16 26 3 0 4-2 6-2s3 2 6 2c6 0 16-12 16-26 0-17-16-18-22-13z"/>', '#d9483b') + '<path d="M33 18c0-7 5-11 12-11-1 7-5 11-12 11z" fill="#5a9e4b"/>'],
+  deload:['Deload week', die('<rect x="4" y="20" width="56" height="24" rx="6"/>', '#5b8fd6') + label(32, 36, 11, '#fff', 'DELOAD')],
+  shaker:['Protein shake', die('<rect x="23" y="5" width="18" height="10" rx="3"/><path d="M20 15h24l-3 43H23z"/>', '#6aa7a0') + '<rect x="24" y="30" width="16" height="12" rx="2" fill="#fff" opacity=".85"/>' + label(32, 40, 8, '#2f5c57', 'PRO')],
+  moon:['Rest day', die('<path d="M38 6a26 26 0 1 0 20 38A21 21 0 0 1 38 6z"/>', '#9fb4e6') + label(46, 22, 11, '#2d3f7a', 'zz')],
+};
+
+const SKEY = 'iron-notebook-stickers';
+let STK = null;
+try { STK = JSON.parse(localStorage.getItem(SKEY)); } catch {}
+if (!Array.isArray(STK)) STK = [ // a couple of examples so the page shows what stickers do
+  {id:'ex1', tab:'me', kind:'star', x:.66, y:150, r:-8},
+  {id:'ex2', tab:'log', kind:'pr', x:.62, y:250, r:9},
+];
+const saveStk = () => { try { localStorage.setItem(SKEY, JSON.stringify(STK)); } catch {} };
+const curTab = () => tabs.find(t => t.getAttribute('aria-selected') === 'true')?.dataset.tab || 'me';
+const stkSvg = k => `<svg viewBox="0 0 64 64" aria-hidden="true">${STICKERS[k][1]}</svg>`;
+
+$('#sheet').innerHTML = Object.entries(STICKERS).map(([k, [name]]) =>
+  `<button class="sheet-item" type="button" data-kind="${k}" aria-label="Add a ${name} sticker to this page" title="${name}">${stkSvg(k)}</button>`).join('');
+
+function renderStickers() {
+  $('#stickers').innerHTML = STK.filter(s => s.tab === curTab() && STICKERS[s.kind]).map(s =>
+    `<div class="stk" data-id="${s.id}" style="left:${s.x * 100}%;top:${s.y}px;--r:${s.r}deg">${stkSvg(s.kind)}<button class="stk-x" type="button" data-rm="${s.id}" aria-label="Remove ${STICKERS[s.kind][0]} sticker">×</button></div>`).join('');
+}
+function addSticker(kind, x, y) {
+  STK.push({id:Date.now().toString(36) + Math.random().toString(36).slice(2, 5), tab:curTab(), kind, x, y, r:Math.round(Math.random() * 24 - 12)});
+  saveStk(); renderStickers();
+}
+function pagePoint(cx, cy) {
+  const r = $('#page').getBoundingClientRect();
+  return {x:Math.min(.97, Math.max(.03, (cx - r.left) / r.width)), y:Math.round(Math.max(24, Math.min(r.height - 24, cy - r.top))),
+    inside:cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom};
+}
+const closeTray = () => { $('#tray').classList.remove('open'); $('#tray-open').setAttribute('aria-expanded', 'false'); };
+
+// drag a sticker off the sheet onto the page (a plain tap drops it on the visible part of the page)
+let drag = null, suppressClick = false;
+$('#sheet').addEventListener('pointerdown', e => {
+  const b = e.target.closest('[data-kind]'); if (!b || e.button > 0) return;
+  drag = {kind:b.dataset.kind, x0:e.clientX, y0:e.clientY, moved:false};
+  b.setPointerCapture(e.pointerId);
+});
+$('#sheet').addEventListener('pointermove', e => {
+  if (!drag) return;
+  if (!drag.moved) {
+    if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 6) return;
+    drag.moved = true;
+    drag.ghost = Object.assign(document.createElement('div'), {className:'stk ghost', innerHTML:stkSvg(drag.kind)});
+    document.body.append(drag.ghost); closeTray();
+  }
+  drag.ghost.style.left = e.clientX + 'px'; drag.ghost.style.top = e.clientY + 'px';
+});
+const endDrag = e => {
+  if (!drag) return;
+  const d = drag; drag = null;
+  if (!d.moved) return;
+  d.ghost.remove(); suppressClick = true;
+  const t = $('#tray').getBoundingClientRect(), p = pagePoint(e.clientX, e.clientY);
+  const overTray = e.clientX >= t.left && e.clientX <= t.right && e.clientY >= t.top && e.clientY <= t.bottom;
+  if (e.type === 'pointerup' && p.inside && !overTray) addSticker(d.kind, p.x, p.y);
+};
+$('#sheet').addEventListener('pointerup', endDrag);
+$('#sheet').addEventListener('pointercancel', endDrag);
+$('#sheet').addEventListener('click', e => {
+  const b = e.target.closest('[data-kind]'); if (!b) return;
+  if (suppressClick) { suppressClick = false; return; }
+  const r = $('#page').getBoundingClientRect(), top = Math.max(r.top, 0), bottom = Math.min(innerHeight, r.bottom);
+  const p = pagePoint(r.left + r.width * (.55 + Math.random() * .35), top + (bottom - top) * (.25 + Math.random() * .3));
+  addSticker(b.dataset.kind, p.x, p.y); closeTray();
+});
+
+// arrange mode: stickers come to the front so you can drag or remove them
+$('#arrange').addEventListener('change', e => $('#page').classList.toggle('arranging', e.target.checked));
+$('#stickers').addEventListener('pointerdown', e => {
+  const el = e.target.closest('.stk');
+  if (!el || e.target.closest('[data-rm]') || !$('#page').classList.contains('arranging')) return;
+  const s = STK.find(s => s.id === el.dataset.id); if (!s) return;
+  el.setPointerCapture(e.pointerId); el.classList.add('lifted');
+  const move = ev => { const p = pagePoint(ev.clientX, ev.clientY); s.x = p.x; s.y = p.y; el.style.left = s.x * 100 + '%'; el.style.top = s.y + 'px'; };
+  const up = () => { el.classList.remove('lifted'); el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); saveStk(); };
+  el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+});
+$('#stickers').addEventListener('click', e => {
+  const id = e.target.closest('[data-rm]')?.dataset.rm; if (!id) return;
+  STK = STK.filter(s => s.id !== id); saveStk(); renderStickers();
+});
+let clearArmed = 0;
+$('#clear-stickers').addEventListener('click', e => {
+  const b = e.currentTarget, reset = () => { clearArmed = 0; b.textContent = 'Clear this page'; };
+  if (!STK.some(s => s.tab === curTab())) { b.textContent = 'Nothing to clear'; setTimeout(reset, 1500); return; }
+  if (!clearArmed) { b.textContent = 'Tap again to clear'; clearArmed = setTimeout(reset, 3000); return; }
+  clearTimeout(clearArmed); reset();
+  STK = STK.filter(s => s.tab !== curTab()); saveStk(); renderStickers();
+});
+$('#tray-open').addEventListener('click', () => { const o = $('#tray').classList.toggle('open'); $('#tray-open').setAttribute('aria-expanded', o); });
+$('#tray-close').addEventListener('click', closeTray);
+
+// ---------- boot ----------
+P = readMe(); applyProfile(); renderLog(); renderLib();
+const start = location.hash.slice(1);
+show(tabs.some(t => t.dataset.tab === start) ? start : 'me');
+align();
+document.fonts?.ready.then(() => { align(); snap(); });
+let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => snap(), 150); });
+</script>
