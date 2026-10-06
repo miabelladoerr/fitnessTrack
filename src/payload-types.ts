@@ -68,6 +68,11 @@ export interface Config {
   blocks: {};
   collections: {
     users: User;
+    measurements: Measurement;
+    workouts: Workout;
+    routines: Routine;
+    'food-entries': FoodEntry;
+    stickers: Sticker;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -76,6 +81,11 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
+    measurements: MeasurementsSelect<false> | MeasurementsSelect<true>;
+    workouts: WorkoutsSelect<false> | WorkoutsSelect<true>;
+    routines: RoutinesSelect<false> | RoutinesSelect<true>;
+    'food-entries': FoodEntriesSelect<false> | FoodEntriesSelect<true>;
+    stickers: StickersSelect<false> | StickersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -123,6 +133,32 @@ export interface User {
   id: number;
   name?: string | null;
   role: 'member' | 'admin';
+  profile?: {
+    age?: number | null;
+    heightIn?: number | null;
+    calorieFormula?: ('m' | 'f') | null;
+    goals?: ('glutes' | 'tone' | 'bulk' | 'strong' | 'lose' | 'stamina')[] | null;
+    trainingDays?: number | null;
+    sessionMinutes?: number | null;
+    experience?: ('beg' | 'int' | 'adv') | null;
+    location?: ('home' | 'gym') | null;
+    equipment?: string[] | null;
+    goEasyOn?: ('back' | 'shoulder' | 'knee')[] | null;
+    measurementTargets?:
+      | {
+          measure: 'weight' | 'waist' | 'hips' | 'chest' | 'arm' | 'thigh' | 'bf';
+          value: number;
+          id?: string | null;
+        }[]
+      | null;
+    liftTargets?:
+      | {
+          lift: 'bench' | 'squat' | 'deadlift' | 'ohp' | 'thrust';
+          oneRepMaxLb: number;
+          id?: string | null;
+        }[]
+      | null;
+  };
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -142,6 +178,114 @@ export interface User {
     | null;
   password?: string | null;
   collection: 'users';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "measurements".
+ */
+export interface Measurement {
+  id: number;
+  owner: number | User;
+  date: string;
+  weight?: number | null;
+  waist?: number | null;
+  hips?: number | null;
+  chest?: number | null;
+  arm?: number | null;
+  thigh?: number | null;
+  bodyFat?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "workouts".
+ */
+export interface Workout {
+  id: number;
+  owner: number | User;
+  date: string;
+  title: string;
+  exercises?:
+    | {
+        name: string;
+        repLow?: number | null;
+        repHigh?: number | null;
+        targetRpe?: number | null;
+        sets?:
+          | {
+              weight?: number | null;
+              reps?: number | null;
+              rpe?: number | null;
+              done?: boolean | null;
+              id?: string | null;
+            }[]
+          | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "routines".
+ */
+export interface Routine {
+  id: number;
+  owner: number | User;
+  title: string;
+  days?:
+    | {
+        label: string;
+        type?: ('full' | 'upper' | 'lower' | 'push' | 'pull' | 'legs') | null;
+        items?:
+          | {
+              exercise: string;
+              pattern?: string | null;
+              sets?: number | null;
+              reps?: string | null;
+              restSeconds?: number | null;
+              id?: string | null;
+            }[]
+          | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "food-entries".
+ */
+export interface FoodEntry {
+  id: number;
+  owner: number | User;
+  date: string;
+  meal: 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
+  food: string;
+  kcal: number;
+  protein?: number | null;
+  carbs?: number | null;
+  fat?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stickers".
+ */
+export interface Sticker {
+  id: number;
+  owner: number | User;
+  tab: 'me' | 'log' | 'routine' | 'food' | 'progress' | 'library';
+  kind: string;
+  x: number;
+  y: number;
+  rotation?: number | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -166,10 +310,31 @@ export interface PayloadKv {
  */
 export interface PayloadLockedDocument {
   id: number;
-  document?: {
-    relationTo: 'users';
-    value: number | User;
-  } | null;
+  document?:
+    | ({
+        relationTo: 'users';
+        value: number | User;
+      } | null)
+    | ({
+        relationTo: 'measurements';
+        value: number | Measurement;
+      } | null)
+    | ({
+        relationTo: 'workouts';
+        value: number | Workout;
+      } | null)
+    | ({
+        relationTo: 'routines';
+        value: number | Routine;
+      } | null)
+    | ({
+        relationTo: 'food-entries';
+        value: number | FoodEntry;
+      } | null)
+    | ({
+        relationTo: 'stickers';
+        value: number | Sticker;
+      } | null);
   globalSlug?: string | null;
   user: {
     relationTo: 'users';
@@ -219,6 +384,34 @@ export interface PayloadMigration {
 export interface UsersSelect<T extends boolean = true> {
   name?: T;
   role?: T;
+  profile?:
+    | T
+    | {
+        age?: T;
+        heightIn?: T;
+        calorieFormula?: T;
+        goals?: T;
+        trainingDays?: T;
+        sessionMinutes?: T;
+        experience?: T;
+        location?: T;
+        equipment?: T;
+        goEasyOn?: T;
+        measurementTargets?:
+          | T
+          | {
+              measure?: T;
+              value?: T;
+              id?: T;
+            };
+        liftTargets?:
+          | T
+          | {
+              lift?: T;
+              oneRepMaxLb?: T;
+              id?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -236,6 +429,109 @@ export interface UsersSelect<T extends boolean = true> {
         createdAt?: T;
         expiresAt?: T;
       };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "measurements_select".
+ */
+export interface MeasurementsSelect<T extends boolean = true> {
+  owner?: T;
+  date?: T;
+  weight?: T;
+  waist?: T;
+  hips?: T;
+  chest?: T;
+  arm?: T;
+  thigh?: T;
+  bodyFat?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "workouts_select".
+ */
+export interface WorkoutsSelect<T extends boolean = true> {
+  owner?: T;
+  date?: T;
+  title?: T;
+  exercises?:
+    | T
+    | {
+        name?: T;
+        repLow?: T;
+        repHigh?: T;
+        targetRpe?: T;
+        sets?:
+          | T
+          | {
+              weight?: T;
+              reps?: T;
+              rpe?: T;
+              done?: T;
+              id?: T;
+            };
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "routines_select".
+ */
+export interface RoutinesSelect<T extends boolean = true> {
+  owner?: T;
+  title?: T;
+  days?:
+    | T
+    | {
+        label?: T;
+        type?: T;
+        items?:
+          | T
+          | {
+              exercise?: T;
+              pattern?: T;
+              sets?: T;
+              reps?: T;
+              restSeconds?: T;
+              id?: T;
+            };
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "food-entries_select".
+ */
+export interface FoodEntriesSelect<T extends boolean = true> {
+  owner?: T;
+  date?: T;
+  meal?: T;
+  food?: T;
+  kcal?: T;
+  protein?: T;
+  carbs?: T;
+  fat?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stickers_select".
+ */
+export interface StickersSelect<T extends boolean = true> {
+  owner?: T;
+  tab?: T;
+  kind?: T;
+  x?: T;
+  y?: T;
+  rotation?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

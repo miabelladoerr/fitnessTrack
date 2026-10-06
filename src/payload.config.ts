@@ -4,6 +4,7 @@ import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 
+import { FoodEntries, Measurements, Routines, Stickers, Workouts } from './collections/Notebook'
 import { Users } from './collections/Users'
 
 const filename = fileURLToPath(import.meta.url)
@@ -16,7 +17,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users],
+  collections: [Users, Measurements, Workouts, Routines, FoodEntries, Stickers],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
