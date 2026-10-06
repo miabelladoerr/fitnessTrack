@@ -1,0 +1,6 @@
+# Netlify: apply any new database migrations to Netlify Database, then build the Next.js + Payload app.
+[build]
+  command = "npm run deploy-build"
+
+[build.environment]
+  NODE_VERSION = "22"

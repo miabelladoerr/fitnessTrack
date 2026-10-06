@@ -44,9 +44,10 @@ export const Users: CollectionConfig = {
       },
     ],
     beforeChange: [
-      // the very first account becomes the admin, so someone can always get into the dashboard
+      // Locally, the very first account becomes the admin so you can always reach the dashboard.
+      // Not in production: there anyone could sign up first, so admins are promoted by hand (README).
       async ({ data, operation, req }) => {
-        if (operation === 'create') {
+        if (operation === 'create' && process.env.NODE_ENV !== 'production') {
           const { totalDocs } = await req.payload.count({
             collection: 'users',
             overrideAccess: true,
