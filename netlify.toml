@@ -5,3 +5,6 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  # Next.js keeps a copy of environment values in its build cache, which is never deployed. Netlify's secret
+  # scan flags that copy, so skip only the cache folders; the deployed site and functions are still scanned.
+  SECRETS_SCAN_OMIT_PATHS = ".next/cache/**,.netlify/.next/cache/**"
