@@ -143,7 +143,7 @@ h2 .muted{font:400 15px/1 var(--sans);letter-spacing:0;margin-left:4px}
 h3.note{font:650 20px/var(--line) var(--display)}
 
 /* layout */
-section[role="tabpanel"]{display:grid;gap:var(--line);position:relative;z-index:2}
+section[role="tabpanel"]{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--line);position:relative;z-index:2}
 .stack{display:grid;gap:var(--line)}
 .split{display:grid;grid-template-columns:minmax(0,1fr) 236px;gap:0 44px;align-items:start}
 .split > aside{padding-top:var(--line)}
@@ -203,6 +203,12 @@ th.num{text-align:right}
 .scroll{overflow-x:auto}
 
 /* workout */
+.daypick{display:flex;gap:8px;height:var(--line);align-items:center;overflow-x:auto;scrollbar-width:none}
+.daypick::-webkit-scrollbar{display:none}
+.daypick button{flex:none;font:600 13.5px/1 var(--sans);height:26px;padding:0 13px;border-radius:999px;border:1px solid #dcdcec;background:#fff;color:var(--text);cursor:pointer;white-space:nowrap}
+.daypick button:hover{background:#f3f2fb}
+.daypick button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.daypick .today{font-weight:500;opacity:.75;margin-left:3px}
 .ex .sets th{text-align:center}
 .ex .sets td:first-child{color:var(--muted);width:3ch}
 
@@ -386,8 +392,10 @@ th.num{text-align:right}
     <!-- WORKOUT -->
     <section id="p-log" role="tabpanel" aria-labelledby="t-log" hidden>
       <div>
-        <h1>Upper A</h1>
-        <p class="small">Sample session. <span id="summary"></span></p>
+        <div class="daypick" id="daypick" role="group" aria-label="Choose a training day"></div>
+        <h1 id="log-title">Workout</h1>
+        <p class="small"><span id="log-when"></span> <span id="summary"></span></p>
+        <div class="actions"><button class="btn" type="button" id="log-save">Save today’s workout</button><span class="small" id="log-msg" role="status"></span></div>
       </div>
       <div class="stack" id="exercises"></div>
     </section>
@@ -821,7 +829,7 @@ function planTargets() {
       if (have >= 20) return full.push(`${m} already get ${have} sets a week, plenty to grow`);
       const items = R.days.flatMap(d => d.items), main = items.filter(it => BY[it.ex].m[0] === m && it.sets < 5);
       const hits = (main.length ? main : items.filter(it => BY[it.ex].m.includes(m) && it.sets < 5)).slice(0, 2);
-      if (hits.length) return hits.forEach(it => { it.sets++; bumped.push(it.ex); });
+      if (hits.length) return hits.forEach(it => { it.sets++; it.bonus = (it.bonus || 0) + 1; bumped.push(it.ex); });
       const x = cands(FIX[m])[0]; if (!x) return;
       R.days.filter(d => FITS[m].includes(d.type)).forEach(d => { d.items.push(item(FIX[m], x)); (added[x.n] ??= []).push(d.day.split(' · ')[0]); });
     });
@@ -835,7 +843,7 @@ function planTargets() {
     const fit = R.days.filter(d => L.types.includes(d.type));
     const day = fit.find(d => d.items.some(it => it.p === x.p)) || fit[0] || R.days[0];
     const i = day.items.findIndex(it => it.p === x.p); if (i >= 0) day.items.splice(i, 1);
-    day.items.unshift({p:x.p, ex:x.n, sets:4, reps:'3–5', rest:180});
+    day.items.unshift({p:x.p, ex:x.n, sets:4, reps:'3–5', rest:180, heavy:true});
     R.notes.push({text:`${L.name} to ${t.v} lb: ${x.n} now opens ${day.day.split(' · ')[0]} at 4 × 3–5, heavy. Estimated max today: ${L.hist.at(-1)}.`});
   });
 }
@@ -896,18 +904,46 @@ function applyProfile() {
 }
 
 // ---------- workout log ----------
-const LOG = [
-  {n:'Barbell Bench Press', lo:6, hi:10, inc:5, rpe:8, last:'180 × 10, 10, 9', best:240, sets:[[185,10,8,1],[185,10,8.5,1],[185,10,9,1]]},
-  {n:'Barbell Row', lo:6, hi:10, inc:5, rpe:8, last:'165 × 8, 7, 7', best:220, sets:[[165,9,8,1],[165,8,8.5,1],[165,8,9,1]]},
-  {n:'Standing Overhead Press', lo:6, hi:10, inc:5, rpe:8, last:'115 × 8, 7, 6', best:152, sets:[[115,8,8.5,1],[115,7,9,1],[115,5,10,1]]},
-  {n:'Dumbbell Lateral Raise', lo:10, hi:15, inc:2.5, rpe:9, last:'20 × 14, 13, 12', best:29, sets:[[20,15,8,1],[20,14,9,1],['','','',0]]},
-];
+// Each routine day gets its own log, built from the routine; switching days keeps what you typed on the others.
+// Saved sessions (WORKOUTS) supply "last time" and personal bests; today's saved session reloads into its day.
+let LOG = [], LOGDAY = null;
+const LOGS = {}, LOWER = new Set(['squat','hinge','lunge','glute']);
+// gear that doesn't add load: these moves are bodyweight, so progress means harder versions, not +5 lb
+const NOLOAD = new Set(['bodyweight','bench','step','pullbar','mat','sliders','ball','nordic','trx','backext','ghd']);
+const DAYNAME = {Sun:'Sunday', Mon:'Monday', Tue:'Tuesday', Wed:'Wednesday', Thu:'Thursday', Fri:'Friday', Sat:'Saturday'};
+const todayShort = () => new Date().toLocaleDateString('en-US', {weekday:'short'});
+function logFor(di) {
+  const old = Object.fromEntries((LOGS[di] || []).map(x => [x.n, x]));
+  return LOGS[di] = R.days[di].items.map(it => {
+    const [lo, hi] = String(it.reps).split('–').map(Number), prev = old[it.ex];
+    // same plan as before: keep every set, including ones you added; plan changed: keep what you've logged
+    const sets = !prev ? [] : prev.planned === it.sets ? prev.sets : prev.sets.slice(0, Math.max(it.sets, prev.sets.filter(st => st[0] !== '' || st[3]).length));
+    while (sets.length < it.sets) sets.push(['', '', '', 0]);
+    return {n:it.ex, planned:it.sets, lo, hi, timed:!hi, bw:(BY[it.ex]?.e || []).every(k => NOLOAD.has(k)),
+      rpe:COMPOUND.has(it.p) ? 8 : 9, inc:LOWER.has(it.p) ? 10 : COMPOUND.has(it.p) ? 5 : 2.5, sets, ...history(it.ex)};
+  });
+}
+// today's training day, or the next one coming up
+function todaysDay() {
+  const order = Object.keys(DAYNAME), t = order.indexOf(todayShort());
+  for (let k = 0; k < 7; k++) { const i = R.days.findIndex(d => d.day.startsWith(order[(t + k) % 7])); if (i >= 0) return i; }
+  return 0;
+}
 // double progression: fill the rep range on every set, then add weight
 function advice(x) {
   const done = x.sets.filter(s => s[0] > 0 && s[1] > 0);
+  if (x.timed) return ['Go all out for 30 seconds, rest 30, and repeat. Tick each round as you finish it.'];
+  if (x.bw) {
+    const reps = x.sets.filter(st => st[1] > 0);
+    if (!reps.length) return ['Log your reps and I’ll tell you when to make it harder.'];
+    const short = reps.findIndex(st => st[1] < x.lo);
+    if (short >= 0) return [`Set ${short + 1} fell under ${x.lo} reps. Keep this version until every set reaches ${x.lo}.`];
+    if (reps.every(st => st[1] >= x.hi)) return [`Every set hit ${x.hi}. Make it harder next time: add weight, or take 3 seconds on the way down.`];
+    return [`Beat ${reps.map(st => st[1]).join(', ')} next time. Once every set hits ${x.hi}, make it harder.`];
+  }
   if (!done.length) return ['Log a set and I’ll suggest your next jump.'];
   const w = Math.max(...done.map(s => +s[0])), top = Math.max(...done.map(s => e1rm(+s[0], +s[1])));
-  const est = `Est. 1RM ${top} lb${top > x.best ? ', <span class="hl">new PR</span>' : ''}`;
+  const est = `Est. 1RM ${top} lb${x.best && top > x.best ? ', <span class="hl">new PR</span>' : ''}`;
   const short = done.findIndex(s => s[1] < x.lo);
   if (short >= 0) return [`Set ${short + 1} fell under ${x.lo} reps. Stay at ${w} lb. If it happens again, drop to ${Math.round(w * 0.9 / 5) * 5}.`, est];
   if (done.every(s => s[1] >= x.hi)) return [`Every set hit ${x.hi}. Go up to ${w + x.inc} lb next time.`, est];
@@ -916,19 +952,28 @@ function advice(x) {
 function renderSummary() {
   const all = LOG.flatMap(x => x.sets), done = all.filter(s => s[3] && s[0] > 0 && s[1] > 0);
   $('#summary').textContent = `${done.length} of ${all.length} sets done, ${done.reduce((a, s) => a + s[0] * s[1], 0).toLocaleString()} lb moved.`;
+  $('#log-msg').textContent = DIRTY[LOGDAY] ? 'Unsaved changes.' : SAVED[LOGDAY] ? 'Saved today.' : '';
 }
 function renderNote(i) { document.getElementById('note-' + i).innerHTML = advice(LOG[i]).map(t => `<li>${t}</li>`).join(''); }
 function renderLog() {
+  if (!R) return;
+  if (LOGDAY == null || LOGDAY >= R.days.length) LOGDAY = todaysDay();
+  const d = R.days[LOGDAY], short = d.day.split(' · ')[0];
+  $('#daypick').innerHTML = R.days.map((x, di) => `<button type="button" data-day="${di}" aria-pressed="${di === LOGDAY}">${x.day.replace(' · ', ' ')}${x.day.startsWith(todayShort()) ? '<span class="today">today</span>' : ''}</button>`).join('');
+  $('#log-title').textContent = d.day.split(' · ')[1] || d.day;
+  $('#log-when').textContent = short === todayShort() ? 'Today.' : `${DAYNAME[short] || short}.`;
+  LOG = logFor(LOGDAY);
+  if (!LOG.length) { $('#exercises').innerHTML = '<p class="muted">Nothing planned for this day. Add exercises on the Routine tab.</p>'; renderSummary(); return; }
   $('#exercises').innerHTML = LOG.map((x, i) => `
     <article class="ex split">
       <div>
         <h2>${x.n}</h2>
-        <p class="small">${x.sets.length} × ${x.lo}–${x.hi} at RPE ${x.rpe}. Last time ${x.last}.</p>
+        <p class="small">${x.timed ? `${x.sets.length} rounds of 30 s on, 30 s off.` : `${x.sets.length} × ${x.lo}–${x.hi} at RPE ${x.rpe}${x.bw ? ', bodyweight' : ''}.`}${x.last ? ` Last time ${x.last}.` : ''}</p>
         <div class="scroll"><table class="sets">
-          <thead><tr><th>Set</th><th>lb</th><th>Reps</th><th>RPE</th><th>Done</th></tr></thead>
+          <thead><tr><th>Set</th><th>${x.bw ? '+ lb' : 'lb'}</th><th>Reps</th><th>RPE</th><th>Done</th></tr></thead>
           <tbody>${x.sets.map((s, j) => `<tr>
             <td>${j + 1}</td>
-            <td><input class="hand-in" type="number" inputmode="decimal" step="2.5" id="s${i}-${j}-0" data-i="${i}" data-j="${j}" data-k="0" value="${s[0]}" placeholder="lb" aria-label="Set ${j + 1} weight"></td>
+            <td><input class="hand-in" type="number" inputmode="decimal" step="2.5" id="s${i}-${j}-0" data-i="${i}" data-j="${j}" data-k="0" value="${s[0]}" placeholder="${x.bw ? '+ lb' : 'lb'}" aria-label="Set ${j + 1} ${x.bw ? 'added weight' : 'weight'}"></td>
             <td><input class="hand-in" type="number" inputmode="numeric" id="s${i}-${j}-1" data-i="${i}" data-j="${j}" data-k="1" value="${s[1]}" placeholder="reps" aria-label="Set ${j + 1} reps"></td>
             <td><input class="hand-in" type="number" inputmode="decimal" step="0.5" id="s${i}-${j}-2" data-i="${i}" data-j="${j}" data-k="2" value="${s[2]}" placeholder="rpe" aria-label="Set ${j + 1} RPE"></td>
             <td><input type="checkbox" id="s${i}-${j}-3" data-i="${i}" data-j="${j}" data-k="3" ${s[3] ? 'checked' : ''} aria-label="Set ${j + 1} done"></td>
@@ -941,15 +986,75 @@ function renderLog() {
   LOG.forEach((_, i) => renderNote(i));
   renderSummary();
 }
+$('#daypick').addEventListener('click', e => {
+  const b = e.target.closest('[data-day]'); if (!b) return;
+  LOGDAY = +b.dataset.day; renderLog(); snap($('#p-log'));
+});
 $('#exercises').addEventListener('input', e => {
   const {i, j, k} = e.target.dataset; if (i === undefined) return;
   LOG[i].sets[j][k] = k === '3' ? +e.target.checked : (e.target.value === '' ? '' : +e.target.value);
-  renderNote(i); renderSummary();
+  DIRTY[LOGDAY] = true; renderNote(i); renderSummary();
 });
 $('#exercises').addEventListener('click', e => {
   const i = e.target.dataset.add; if (i === undefined) return;
-  const s = LOG[i].sets; s.push(s.at(-1).map((v, k) => k === 3 ? 0 : v)); renderLog();
+  const s = LOG[i].sets; s.push(s.at(-1).map((v, k) => k === 3 ? 0 : v)); DIRTY[LOGDAY] = true; renderLog();
 });
+
+// ---------- saving workouts (Payload) ----------
+let WORKOUTS = [];                 // this account's saved sessions, newest first
+const SAVED = {}, DIRTY = {};      // routine day index → today's saved workout id / has unsaved edits
+const dayTitle = d => d.day.split(' · ')[1] || d.day;
+const orNull = v => v === '' || v == null ? null : +v;
+// the most recent earlier session of an exercise, and its best estimated 1-rep max
+function history(name) {
+  let last = '', best = 0;
+  for (const doc of WORKOUTS) {
+    if (doc.date.slice(0, 10) === TODAY) continue;
+    const sets = (doc.exercises || []).find(x => x.name === name)?.sets?.filter(st => st.reps > 0) || [];
+    sets.forEach(st => { if (st.weight > 0) best = Math.max(best, e1rm(st.weight, st.reps)); });
+    if (!last && sets.length) {
+      const ws = [...new Set(sets.map(st => st.weight || 0))];
+      last = ws.length === 1
+        ? (ws[0] ? `${ws[0]} × ` : '') + sets.map(st => st.reps).join(', ') + (ws[0] ? '' : ' reps')
+        : sets.map(st => `${st.weight || 0} × ${st.reps}`).join(', ');
+    }
+  }
+  return {last, best};
+}
+// today's saved sessions go back into the days they were logged on
+function restoreToday() {
+  WORKOUTS.filter(doc => doc.date.slice(0, 10) === TODAY).forEach(doc => {
+    const di = R.days.findIndex(d => dayTitle(d) === doc.title); if (di < 0) return;
+    SAVED[di] = doc.id;
+    LOGS[di] = (doc.exercises || []).map(x => ({n:x.name, planned:R.days[di].items.find(it => it.ex === x.name)?.sets,
+      sets:(x.sets || []).map(st => [st.weight ?? '', st.reps ?? '', st.rpe ?? '', st.done ? 1 : 0])}));
+  });
+}
+$('#log-save').addEventListener('click', async () => {
+  const say = t => { $('#log-msg').textContent = t; }, btn = $('#log-save');
+  const bad = LOG.flatMap(x => x.sets.map((st, j) => [x, j, st]))
+    .find(([, , st]) => (st[2] !== '' && (st[2] < 1 || st[2] > 10)) || st[0] < 0 || st[1] < 0);
+  if (bad) return say(`Check set ${bad[1] + 1} of ${bad[0].n}: weight and reps can’t be negative, and RPE goes from 1 to 10.`);
+  const body = {date:TODAY, title:dayTitle(R.days[LOGDAY]), exercises:LOG.map(x => ({
+    name:x.n, repLow:x.lo || null, repHigh:x.hi || null, targetRpe:x.rpe,
+    sets:x.sets.map(st => ({weight:orNull(st[0]), reps:orNull(st[1]), rpe:orNull(st[2]), done:Boolean(st[3])})),
+  }))};
+  if (!body.exercises.some(x => x.sets.some(st => st.weight != null || st.reps != null || st.done))) return say('Log at least one set first.');
+  btn.disabled = true; say('Saving…');
+  try {
+    const id = SAVED[LOGDAY];
+    const {doc} = id ? await api('workouts/' + id, {method:'PATCH', body}) : await api('workouts', {method:'POST', body});
+    SAVED[LOGDAY] = doc.id; DIRTY[LOGDAY] = false;
+    WORKOUTS = [doc, ...WORKOUTS.filter(w => w.id !== doc.id)];
+    say(`Saved at ${new Date().toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'})}.`);
+  } catch (err) {
+    say(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+// don't lose logged sets by closing the tab
+addEventListener('beforeunload', e => { if (Object.values(DIRTY).some(Boolean)) e.preventDefault(); });
 
 // ---------- routine ----------
 const DAY = {
@@ -983,6 +1088,13 @@ function scheme(p) {
   return {sets: sets + (P.level === 'adv') - (P.level === 'beg' && !COMPOUND.has(p) && sets > 2), reps, rest};
 }
 const item = (p, x) => ({p, ex:x.n, ...scheme(p)});
+// After a swap, the slot gets the plan's numbers for the new exercise: heavy 4 × 3–5 if it's one of your
+// lift-target lifts, otherwise your goal's sets and reps (plus any extra sets a growth target added).
+function replan(it) {
+  if (P.lifts.some(t => LIFTS[t.k].ex.includes(it.ex))) return Object.assign(it, {sets:4, reps:'3–5', rest:180, heavy:true});
+  const base = scheme(it.p);
+  Object.assign(it, {sets:base.sets + (it.bonus || 0), reps:base.reps, rest:base.rest, heavy:false});
+}
 const minutes = d => Math.round(8 + d.items.reduce((a, it) => a + it.sets * (40 + it.rest), 0) / 60);
 function patterns(type) {
   const list = [...DAY[type]];
@@ -1058,11 +1170,12 @@ function renderRoutine() {
   $('#r-notes').innerHTML = ACTIONS.length
     ? ACTIONS.map((n, k) => `<li>${n.text}${n.act ? `<br><button class="link" type="button" data-fix="${k}">${n.act}</button>` : ''}</li>`).join('')
     : '<li>Balanced week. Nothing to flag.</li>';
+  renderLog();
 }
 $('#days').addEventListener('change', e => {
   const {d, i} = e.target.dataset; if (d === undefined) return;
   const it = R.days[d].items[i];
-  if ('sets' in e.target.dataset) it.sets = Math.max(1, Math.min(8, +e.target.value || 1)); else it.ex = e.target.value;
+  if ('sets' in e.target.dataset) it.sets = Math.max(1, Math.min(8, +e.target.value || 1)); else { it.ex = e.target.value; replan(it); }
   renderRoutine();
 });
 $('#days').addEventListener('click', e => {
@@ -1437,7 +1550,10 @@ async function loadAccount(startTab) {
   $('#who').hidden = false;
   const done = Boolean(user.profile?.age && user.profile?.heightIn);
   setOnboarding(!done);
-  if (done) { P = readMe(); applyProfile(); }
+  if (done) {
+    WORKOUTS = (await api('workouts?sort=-date&limit=200&depth=0')).docs;
+    P = readMe(); applyProfile(); restoreToday(); renderLog();
+  }
   show(done ? (tabs.some(t => t.dataset.tab === startTab) ? startTab : 'routine') : 'me');
 }
 
@@ -1477,7 +1593,7 @@ $('#logout').addEventListener('click', async () => {
   location.replace('/prototype.html'); // fresh page, so nothing from this account stays on screen
 });
 
-renderLog(); renderLib();
+renderLib();
 loadAccount(location.hash.slice(1)).catch(err => { $('#loading').textContent = err.message; });
 align();
 document.fonts?.ready.then(() => { align(); snap(); });
