@@ -1,4 +1,5 @@
-# Netlify: apply any new database migrations to Netlify Database, then build the Next.js + Payload app.
+# Netlify: apply any new database migrations, then build the Next.js + Payload app.
+# Set DATABASE_URL (a postgres:// connection string) and PAYLOAD_SECRET in the Netlify environment variables.
 [build]
   command = "npm run deploy-build"
 

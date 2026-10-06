@@ -16,24 +16,30 @@ If port 3000 is busy, use another one: `npm run dev -- -p 3002`.
 
 ## Deploy to Netlify
 
-The live site uses **Netlify Database** (Postgres). The app switches to Postgres whenever
-`NETLIFY_DB_URL` is set, which Netlify does for every build and request.
+Netlify can't keep the local SQLite file, so the live site needs a hosted Postgres database, for example
+a free one from [Neon](https://neon.tech). The app uses Postgres whenever `DATABASE_URL` starts with `postgres://`.
 
-1. In Netlify, **Add new project → Import an existing project** and pick this GitHub repo.
+1. Create a Postgres database and copy its connection string (`postgres://...`).
+2. In Netlify, **Add new project → Import an existing project** and pick this GitHub repo.
    `netlify.toml` sets the build command (`npm run deploy-build`) and Node 22.
-2. In the project, open **Data & Storage → Database** and create a database.
-3. In **Project configuration → Environment variables**, add `PAYLOAD_SECRET`: a new long random
-   string, not the one in your local `.env`.
-4. Deploy. Each build runs `payload migrate` first, so database changes go live with the code.
-   Deploy previews get their own copy of the database.
-5. Make yourself the admin: sign up on the live site, then run this in the database's SQL console
-   (or pgAdmin) with your email, and log in again:
+3. In **Project configuration → Environment variables**, add:
+   - `DATABASE_URL`: the Postgres connection string.
+   - `PAYLOAD_SECRET`: a new long random string, not the one in your local `.env`.
+4. Deploy. Each build runs `payload migrate` first, and the site also applies any pending migrations
+   when it starts, so database changes go live with the code.
+5. Make yourself the admin. On the live site nobody becomes admin automatically, so a stranger can't
+   claim the dashboard.
+   1. Sign up on the live site.
+   2. From this folder, with the same connection string (PowerShell shown):
 
-   ```sql
-   UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
-   ```
+      ```powershell
+      $env:DATABASE_URL = "postgres://..."
+      npm run make-admin -- you@example.com
+      ```
 
-   On the live site nobody becomes admin automatically, so a stranger can't claim the dashboard.
+   3. Log out and back in, then open `/admin`. After that, promote other people from the dashboard.
+
+   Same thing in SQL, for pgAdmin or your database's SQL editor: `UPDATE users SET role = 'admin' WHERE email = 'you@example.com';`
 
 ### Changing collections
 
@@ -54,4 +60,4 @@ Run it against a Postgres database that already has the existing migrations appl
 ## Tests
 
 `npm run test:int` checks the access rules. It uses its own `test.db`, so it never touches your local accounts.
-Set `NETLIFY_DB_URL` to a migrated Postgres database to run the same tests against Postgres.
+Set `TEST_DATABASE_URL` to a migrated Postgres database to run the same tests against Postgres.
